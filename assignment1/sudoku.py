@@ -126,6 +126,12 @@ def constraint_no_duplicates_generic(model, sudoku:dict, indices):
                         ])
 
 
+def constraint_all_numbers_present_generic(model, sudoku:dict, indices):
+    for n in numbers():
+        variables = []
+        for r, c in indices:
+            variables.append(sudoku[r][c][n])
+        model.AddBoolOr(variables)
 
 def main():
     model = cp_model.CpModel()
@@ -142,6 +148,15 @@ def main():
     # No duplicates in each sub-square
     for sqs in square_starts():
         constraint_no_duplicates_generic(model, sudoku, square(sqs))
+
+    # Every number in each row and each column
+    for i in range(9):
+        constraint_all_numbers_present_generic(model, sudoku, row(i))
+        constraint_all_numbers_present_generic(model, sudoku, column(i))
+
+    # Every number in each sub-square
+    for sqs in square_starts():
+        constraint_all_numbers_present_generic(model, sudoku, square(sqs))
 
     solver = cp_model.CpSolver()
     solution_printer = SolutionPrinter(sudoku)

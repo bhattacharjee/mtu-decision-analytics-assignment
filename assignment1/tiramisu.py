@@ -62,6 +62,24 @@ def create_cross_condition(model, var_list1:list, var_list2: list)->dict:
             variables[var2] = model.NewBoolVar(f"{var1}--{var2}")
         ret_dict[var1] = variables
 
+    # Every item in var_list1 has a different property from var_list2
+    for i in range(len(var_list1)):
+        for j in range(i+1, len(var_list1)):
+            for k in range(len(var_list2)):
+                model.AddBoolOr(
+                            [                                               \
+                                ret_dict[var_list1[i]][var_list2[k]].Not(), \
+                                ret_dict[var_list1[j]][var_list2[k]].Not()  \
+                            ]                                               \
+                        )
+
+    # At least one item in var_list2 for each item in var_list1
+    for v1 in var_list1:
+        variables = []
+        for v2 in var_list2:
+            variables.append(ret_dict[v1][v2])
+        model.AddBoolOr(variables)
+
     return ret_dict
 
 
@@ -73,15 +91,15 @@ def main():
     person_drink = create_cross_condition(model, PERSON, DRINK)
     person_dessert = create_cross_condition(model, PERSON, DESSERT)
 
-    solution_printer = SolutionPrinter(                             \
-                        person=PERSON,                              \
-                        starter=STARTER,                            \
-                        maincourse=MAINCOURSE,                      \
-                        drink=DRINK,                                \
-                        dessert=DESSERT,                            \
-                        person_starter=person_starter,              \
-                        person_maincourse=person_maincourse,        \
-                        person_drink=person_drink,                  \
+    solution_printer = SolutionPrinter(                                     \
+                        person=PERSON,                                      \
+                        starter=STARTER,                                    \
+                        maincourse=MAINCOURSE,                              \
+                        drink=DRINK,                                        \
+                        dessert=DESSERT,                                    \
+                        person_starter=person_starter,                      \
+                        person_maincourse=person_maincourse,                \
+                        person_drink=person_drink,                          \
                         person_dessert=person_dessert)
     solver = cp_model.CpSolver()
     status = solver.SearchForAllSolutions(model, solution_printer)

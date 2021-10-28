@@ -105,10 +105,7 @@ def create_variables(model):
 def set_constraint_one_number_per_cell(model, sudoku:dict):
     for r in range(9):
         for c in range(9):
-            variables = []
-            for n in numbers():
-                variables.append(sudoku[r][c][n])
-            model.AddBoolOr(variables)
+            model.AddBoolOr([sudoku[r][c][n] for n in numbers()])
 
 
 def set_constraint_no_duplicates(model, sudoku:dict, indices):

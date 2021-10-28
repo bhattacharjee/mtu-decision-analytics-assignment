@@ -285,11 +285,13 @@ def main():
             ])
     model.AddBoolOr(                                                        \
             [                                                               \
+                person_dessert["Daniel"]["Chocolate_Cake"].Not(),           \
                 person_dessert["James"]["Ice_Cream"].Not(),                 \
                 person_drink["James"]["Coke"].Not()                         \
             ])
     model.AddBoolOr(                                                        \
             [                                                               \
+                person_dessert["James"]["Chocolate_Cake"].Not(),            \
                 person_dessert["Daniel"]["Ice_Cream"].Not(),                \
                 person_drink["Daniel"]["Coke"].Not()                        \
             ])

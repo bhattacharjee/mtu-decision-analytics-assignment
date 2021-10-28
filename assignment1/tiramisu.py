@@ -52,7 +52,10 @@ class SolutionPrinter(cp_model.CpSolverSolutionCallback):
         print()
 
 
-def create_cross_condition(model, var_list1:list, var_list2: list)->dict:
+def create_variables_and_implicit_constraints(
+        model,
+        var_list1:list,
+        var_list2: list) -> dict:
 
     # Create the variables
     ret_dict = {}
@@ -66,7 +69,7 @@ def create_cross_condition(model, var_list1:list, var_list2: list)->dict:
     for i in range(len(var_list1)):
         for j in range(i+1, len(var_list1)):
             for k in range(len(var_list2)):
-                model.AddBoolOr(
+                model.AddBoolOr(                                            \
                             [                                               \
                                 ret_dict[var_list1[i]][var_list2[k]].Not(), \
                                 ret_dict[var_list1[j]][var_list2[k]].Not()  \
@@ -80,16 +83,42 @@ def create_cross_condition(model, var_list1:list, var_list2: list)->dict:
             variables.append(ret_dict[v1][v2])
         model.AddBoolOr(variables)
 
+    # Max one property for every item in var_list1
+    for v1 in var_list1:
+        for i in range(len(var_list2)):
+            for j in range(i+1, len(var_list2)):
+                model.AddBoolOr(                                            \
+                        [                                                   \
+                            ret_dict[v1][var_list2[i]].Not(),               \
+                            ret_dict[v1][var_list2[j]].Not()                \
+                        ]                                                   \
+                    )
+
     return ret_dict
 
 
 def main():
     model = cp_model.CpModel()
 
-    person_starter = create_cross_condition(model, PERSON, STARTER)
-    person_maincourse = create_cross_condition(model, PERSON, MAINCOURSE)
-    person_drink = create_cross_condition(model, PERSON, DRINK)
-    person_dessert = create_cross_condition(model, PERSON, DESSERT)
+    person_starter = create_variables_and_implicit_constraints(             \
+                            model,                                          \
+                            PERSON,                                         \
+                            STARTER)
+
+    person_maincourse = create_variables_and_implicit_constraints(          \
+                            model,                                          \
+                            PERSON,                                         \
+                            MAINCOURSE)
+
+    person_drink = create_variables_and_implicit_constraints(               \
+                            model,                                          \
+                            PERSON,                                         \
+                            DRINK)
+
+    person_dessert = create_variables_and_implicit_constraints(             \
+                            model,                                          \
+                            PERSON,                                         \
+                            DESSERT)
 
     solution_printer = SolutionPrinter(                                     \
                         person=PERSON,                                      \
@@ -101,6 +130,7 @@ def main():
                         person_maincourse=person_maincourse,                \
                         person_drink=person_drink,                          \
                         person_dessert=person_dessert)
+
     solver = cp_model.CpSolver()
     status = solver.SearchForAllSolutions(model, solution_printer)
     print(solver.StatusName(status))

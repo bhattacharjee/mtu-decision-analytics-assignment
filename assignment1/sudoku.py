@@ -130,10 +130,7 @@ def set_constraint_no_duplicates(model, sudoku:dict, indices):
 
 def set_constraint_all_numbers_present(model, sudoku:dict, indices):
     for n in numbers():
-        variables = []
-        for r, c in indices:
-            variables.append(sudoku[r][c][n])
-        model.AddBoolOr(variables)
+        model.AddBoolOr([sudoku[r][c][n] for r, c in indices])
 
 
 def set_explicit_constraints(model, sudoku:dict):

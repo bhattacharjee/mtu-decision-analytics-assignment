@@ -31,6 +31,7 @@ class SolutionPrinter(cp_model.CpSolverSolutionCallback):
     def validate_all_numbers_present(self, indices:dict):
         s = set()
         count = 0
+
         def update(i, j, k):
             nonlocal count, s
             if self.Value(self.sudoku[i][j][k]):

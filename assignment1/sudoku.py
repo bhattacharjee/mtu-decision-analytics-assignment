@@ -1,0 +1,94 @@
+#!/usr/bin/env python3
+
+from ortools.sat.python import cp_model
+
+def numbers():
+    return [x for x in range(1,10)]
+
+class SolutionPrinter(cp_model.CpSolverSolutionCallback):
+    def __init__(\
+            self,
+            sudoku:dict):
+        super().__init__()
+        self.sudoku = sudoku
+        self.solutions = 0
+
+    def validate(self, sudoku:dict):
+
+        # Each cell should have exactly one variable set
+        for i in range(9):
+            for j in range(9):
+                count = 1
+                for k in numbers():
+                    if self.Value(sudoku[i][j][k]): count = count + 1
+                if (1 != count):
+                    print(f"sudoku[{i},{j}] has {count} values")
+                assert(count == 1)
+
+        # Each column should have exactly one variable for each number set
+        for i in range(9):
+            s = set()
+            for j in range(9):
+                for k in numbers():
+                    if self.Value(sudoku[i][j][k]):
+                        s.add(k)
+            for n in numbers():
+                if n not in s:
+                    print(f"Number {n} not present in row {i}")
+                assert(n in s)
+                if len(s) != len(numbers()):
+                    print(f"Not all numbers present in row {i}")
+                assert(len(s) == len(numbers()))
+
+
+
+    def OnSolutionCallback(self):
+        self.solutions = self.solutions + 1
+        print(f"Solution #{self.solutions:06d}")
+        print("=======+===+===+===+===+===+===+===+===+===+")
+        #self.validate(self.sudoku)
+
+        print("       | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |")
+        print("=======+===+===+===+===+===+===+===+===+===+")
+        for i in range(9):
+            output_line = f"   {i}  "
+            for j in range(9):
+                for k in numbers():
+                    if self.Value(self.sudoku[i][j][k]):
+                        output_line = output_line + f" | {k}"
+                        break
+            output_line = output_line + f" |"
+            print(output_line)
+            print("-------+---+---+---+---+---+---+---+---+---+")
+        print()
+        print()
+        print()
+        print()
+
+
+def create_variables(model):
+    ret_dict = {}
+    for i in range(9):
+        dictionary = {}
+        for j in range(9):
+            inner_dictionary = {}
+            for k in numbers():
+                inner_dictionary[k] = model.NewBoolVar(f"--[{i},{j}]->{k}--")
+            dictionary[j] = inner_dictionary
+        ret_dict[i] = dictionary
+
+    return ret_dict
+
+
+def main():
+    model = cp_model.CpModel()
+
+    sudoku = create_variables(model)
+
+    solver = cp_model.CpSolver()
+    solution_printer = SolutionPrinter(sudoku)
+    status = solver.SearchForAllSolutions(model, solution_printer)
+    print(solver.StatusName(status))
+
+if "__main__" == __name__:
+    main()

@@ -236,6 +236,44 @@ def main():
 
 
 
+    # Explicit Constraint 8
+    # ---------------------
+    # One of the women drinks white wine, while the other
+    # prefers red wine for drinks
+    model.AddBoolOr(                                                        \
+            [                                                               \
+                person_drink["Emily"]["White_Wine"],                        \
+                person_drink["Emily"]["Red_Wine"]                           \
+            ])
+    model.AddBoolOr(                                                        \
+            [                                                               \
+                person_drink["Sophie"]["White_Wine"],                       \
+                person_drink["Sophie"]["Red_Wine"]                          \
+            ])
+    model.AddBoolOr(                                                        \
+            [                                                               \
+                person_drink["Emily"]["White_Wine"].Not(),                  \
+                person_drink["Sophie"]["Red_Wine"]                          \
+            ])
+    model.AddBoolOr(                                                        \
+            [                                                               \
+                person_drink["Emily"]["Red_Wine"].Not(),                    \
+                person_drink["Sophie"]["White_Wine"]                        \
+            ])
+    model.AddBoolOr(                                                        \
+            [                                                               \
+                person_drink["Sophie"]["White_Wine"].Not(),                 \
+                person_drink["Emily"]["Red_Wine"]                           \
+            ])
+    model.AddBoolOr(                                                        \
+            [                                                               \
+                person_drink["Sophie"]["Red_Wine"].Not(),                   \
+                person_drink["Emily"]["White_Wine"]                         \
+            ])
+
+
+
+
 
 
 

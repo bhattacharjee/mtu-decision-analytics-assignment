@@ -223,6 +223,16 @@ def main():
                 ])
 
 
+    # Explicit Constraint 7
+    # ---------------------
+    # The filet steak should be eaten with either beer or coke for drinks
+    for person in PERSON:
+        model.AddBoolOr(                                                    \
+                [                                                           \
+                    person_maincourse[person]["Filet_Steak"].Not(),         \
+                    person_drink[person]["Beer"],                           \
+                    person_drink[person]["Coke"]                            \
+                ])
 
 
 

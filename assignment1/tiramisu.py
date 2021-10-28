@@ -166,6 +166,17 @@ def main():
                     person_starter[person]["Onion_Soup"].Not(),             \
                     person_maincourse[person]["Filet_Steak"]                \
                 ])
+        model.AddBoolOr(                                                    \
+                [                                                           \
+                    person_maincourse[person]["Filet_Steak"].Not(),         \
+                    person_dessert[person]["Apple_Crumble"]                 \
+                ])
+        model.AddBoolOr(                                                    \
+                [                                                           \
+                    person_dessert[person]["Apple_Crumble"].Not(),          \
+                    person_maincourse[person]["Filet_Steak"]                \
+                ])
+
 
 
     solver = cp_model.CpSolver()

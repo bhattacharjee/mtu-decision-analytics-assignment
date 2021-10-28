@@ -132,17 +132,23 @@ def main():
                             person_dessert=person_dessert)
 
     # Explicit Constraint 1
+    # ---------------------
     # Emily does not like prawn cocktail as starter,
     # nor does she want baked mackerel as main course
     model.AddBoolAnd([person_starter["Emily"]["Prawn_Cocktail"].Not()])
     model.AddBoolAnd([person_maincourse["Emily"]["Baked_Mackerel"].Not()])
+    # ---------------------
 
     # Explicit Constraint 2
-    # Daniel does not want the onion soup as starter and James does not drink beer
+    # ---------------------
+    # Daniel does not want the onion soup as starter and
+    # James does not drink beer
     model.AddBoolAnd([person_starter["Daniel"]["Onion_Soup"].Not()])
     model.AddBoolAnd([person_drink["James"]["Beer"].Not()])
+    # ---------------------
 
     # Explicit Constraint 3
+    # ---------------------
     # Sophie will only have fried chicken as main course
     # if she does not have to take the prawn cocktail as starter
     model.AddBoolOr(                                                        \
@@ -151,8 +157,10 @@ def main():
                     person_maincourse["Sophie"]["Fried_Chicken"]            \
                 ]                                                           \
             )
+    # ---------------------
 
     # Explicit constraint 4
+    # ---------------------
     # The filet steak main course should be combined with the
     # onion soup as starter and with the apple crumble for dessert
     for person in PERSON:
@@ -176,9 +184,11 @@ def main():
                     person_dessert[person]["Apple_Crumble"].Not(),          \
                     person_maincourse[person]["Filet_Steak"]                \
                 ])
+    # ---------------------
 
 
     # Explicit Constraint 5
+    # ---------------------
     # The person who orders the mushroom tart as starter
     # also orders the red wine
     for person in PERSON:
@@ -187,6 +197,40 @@ def main():
                     person_starter[person]["Mushroom_Tart"].Not(),          \
                     person_drink[person]["Red_Wine"]                        \
                 ])
+    # ---------------------
+
+
+    # Explicit Constraint 6
+    # ---------------------
+    # The baked mackerel should not be combined with ice cream for dessert,
+    # nor should the vegan pie be ordered as main together with
+    # prawn cocktail or carpaccio as starter
+    for person in PERSON:
+        model.AddBoolOr(                                                    \
+                [                                                           \
+                    person_maincourse[person]["Baked_Mackerel"].Not(),      \
+                    person_dessert[person]["Ice_Cream"].Not()               \
+                ])
+        model.AddBoolOr(                                                    \
+                [                                                           \
+                    person_maincourse[person]["Vegan_Pie"].Not(),           \
+                    person_starter[person]["Prawn_Cocktail"].Not()          \
+                ])
+        model.AddBoolOr(                                                    \
+                [                                                           \
+                    person_maincourse[person]["Vegan_Pie"].Not(),           \
+                    person_starter[person]["Carpaccio"].Not()               \
+                ])
+
+
+
+
+
+
+
+
+
+
 
     solver = cp_model.CpSolver()
     status = solver.SearchForAllSolutions(model, solution_printer)

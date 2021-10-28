@@ -2,19 +2,6 @@
 
 from ortools.sat.python import cp_model
 
-EXPLICIT_CONSTRAINTS = \
-{
-    0: {7: 3},
-    1: {0: 7, 2: 5, 4: 2},
-    2: {1: 9, 6: 4},
-    3: {5: 4, 8: 2},
-    4: {1: 5, 2: 9, 3: 6, 8: 8},
-    5: {0: 3, 4: 1, 7: 5},
-    6: {0: 5, 1: 7, 4: 6, 6: 1},
-    7: {3: 3},
-    8: {0: 6, 3: 4, 8: 5}
-}
-
 def numbers() -> list:
     return [x for x in range(1,10)]
 
@@ -116,7 +103,7 @@ def create_variables(model):
     return ret_dict
 
 
-def constraint_one_number_per_cell(model, sudoku:dict):
+def set_constraint_one_number_per_cell(model, sudoku:dict):
     for r in range(9):
         for c in range(9):
             variables = []
@@ -125,7 +112,7 @@ def constraint_one_number_per_cell(model, sudoku:dict):
             model.AddBoolOr(variables)
 
 
-def constraint_no_duplicates_generic(model, sudoku:dict, indices):
+def set_constraint_no_duplicates_generic(model, sudoku:dict, indices):
     # Ensure that there are no duplicates in the set of indices passed
     for ii in range(len(indices)):
         for jj in range(ii + 1, len(indices)):
@@ -139,42 +126,59 @@ def constraint_no_duplicates_generic(model, sudoku:dict, indices):
                         ])
 
 
-def constraint_all_numbers_present_generic(model, sudoku:dict, indices):
+def set_constraint_all_numbers_present_generic(model, sudoku:dict, indices):
     for n in numbers():
         variables = []
         for r, c in indices:
             variables.append(sudoku[r][c][n])
         model.AddBoolOr(variables)
 
+
+def set_explicit_constraints(model, sudoku:dict):
+    explicit_constraints = \
+    {
+        0: {7: 3},
+        1: {0: 7, 2: 5, 4: 2},
+        2: {1: 9, 6: 4},
+        3: {5: 4, 8: 2},
+        4: {1: 5, 2: 9, 3: 6, 8: 8},
+        5: {0: 3, 4: 1, 7: 5},
+        6: {0: 5, 1: 7, 4: 6, 6: 1},
+        7: {3: 3},
+        8: {0: 6, 3: 4, 8: 5}
+    }
+
+    for r, val in explicit_constraints.items():
+        for c, n in val.items():
+            model.AddBoolAnd([sudoku[r][c][n]])
+
+
 def main():
     model = cp_model.CpModel()
 
     sudoku = create_variables(model)
 
-    constraint_one_number_per_cell(model, sudoku)
+    set_constraint_one_number_per_cell(model, sudoku)
 
     # No duplicates in each row and each column
     for i in range(9):
-        constraint_no_duplicates_generic(model, sudoku, row(i))
-        constraint_no_duplicates_generic(model, sudoku, column(i))
+        set_constraint_no_duplicates_generic(model, sudoku, row(i))
+        set_constraint_no_duplicates_generic(model, sudoku, column(i))
 
     # No duplicates in each sub-square
     for sqs in square_starts():
-        constraint_no_duplicates_generic(model, sudoku, square(sqs))
+        set_constraint_no_duplicates_generic(model, sudoku, square(sqs))
 
     # Every number in each row and each column
     for i in range(9):
-        constraint_all_numbers_present_generic(model, sudoku, row(i))
-        constraint_all_numbers_present_generic(model, sudoku, column(i))
+        set_constraint_all_numbers_present_generic(model, sudoku, row(i))
+        set_constraint_all_numbers_present_generic(model, sudoku, column(i))
 
     # Every number in each sub-square
     for sqs in square_starts():
-        constraint_all_numbers_present_generic(model, sudoku, square(sqs))
+        set_constraint_all_numbers_present_generic(model, sudoku, square(sqs))
 
-    # Explicit Constraints
-    for r, val in EXPLICIT_CONSTRAINTS.items():
-        for c, n in val.items():
-            model.AddBoolAnd([sudoku[r][c][n]])
+    set_explicit_constraints(model, sudoku)
 
     solver = cp_model.CpSolver()
     solution_printer = SolutionPrinter(sudoku)

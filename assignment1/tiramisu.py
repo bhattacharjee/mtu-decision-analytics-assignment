@@ -178,6 +178,15 @@ def main():
                 ])
 
 
+    # Explicit Constraint 5
+    # The person who orders the mushroom tart as starter
+    # also orders the red wine
+    for person in PERSON:
+        model.AddBoolOr(                                                    \
+                [                                                           \
+                    person_starter[person]["Mushroom_Tart"].Not(),          \
+                    person_drink[person]["Red_Wine"]                        \
+                ])
 
     solver = cp_model.CpSolver()
     status = solver.SearchForAllSolutions(model, solution_printer)

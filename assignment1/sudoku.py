@@ -2,6 +2,19 @@
 
 from ortools.sat.python import cp_model
 
+EXPLICIT_CONSTRAINTS = \
+{
+    0: {7: 3},
+    1: {0: 7, 2: 5, 4: 2},
+    2: {1: 9, 6: 4},
+    3: {5: 4, 8: 2},
+    4: {1: 5, 2: 9, 3: 6, 8: 8},
+    5: {0: 3, 4: 1, 7: 5},
+    6: {0: 5, 1: 7, 4: 6, 6: 1},
+    7: {3: 3},
+    8: {0: 6, 3: 4, 8: 5}
+}
+
 def numbers() -> list:
     return [x for x in range(1,10)]
 
@@ -158,10 +171,16 @@ def main():
     for sqs in square_starts():
         constraint_all_numbers_present_generic(model, sudoku, square(sqs))
 
+    # Explicit Constraints
+    for r, val in EXPLICIT_CONSTRAINTS.items():
+        for c, n in val.items():
+            model.AddBoolAnd([sudoku[r][c][n]])
+
     solver = cp_model.CpSolver()
     solution_printer = SolutionPrinter(sudoku)
     status = solver.SearchForAllSolutions(model, solution_printer)
     print(solver.StatusName(status))
+
 
 if "__main__" == __name__:
     main()

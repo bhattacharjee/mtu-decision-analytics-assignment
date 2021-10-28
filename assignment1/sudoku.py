@@ -93,17 +93,13 @@ class SolutionPrinter(cp_model.CpSolverSolutionCallback):
 
 
 def create_variables(model):
-    ret_dict = {}
-    for i in range(9):
-        dictionary = {}
-        for j in range(9):
-            inner_dictionary = {}
-            for k in numbers():
-                inner_dictionary[k] = model.NewBoolVar(f"--[{i},{j}]->{k}--")
-            dictionary[j] = inner_dictionary
-        ret_dict[i] = dictionary
+    def get_inner_dict(i, j):
+        return {k: model.NewBoolVar(f"--[{i},{j}]->{k}--") for k in numbers()}
 
-    return ret_dict
+    def get_outer_dict(i):
+        return {j: get_inner_dict(i, j) for j in range(9)}
+
+    return {i: get_outer_dict(i) for i in range(9)}
 
 
 def set_constraint_one_number_per_cell(model, sudoku:dict):
@@ -125,10 +121,10 @@ def set_constraint_no_duplicates(model, sudoku:dict, indices):
                     sudoku[r2][c2][n].Not(),                                \
                 ])
 
-    [update(model, sudoku, i, j, n)                                         \
-            for i in range(len(indices))                                    \
-            for j in range(i+1, len(indices))                               \
-            for n in numbers()]
+    for i in range(len(indices)):
+        for j in range(i+1, len(indices)):
+            for n in numbers():
+                update(model, sudoku, i, j, n)
 
 
 

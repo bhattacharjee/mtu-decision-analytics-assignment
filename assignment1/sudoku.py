@@ -116,7 +116,6 @@ def set_constraint_one_number_per_cell(model, sudoku:dict):
 
 
 def set_constraint_no_duplicates(model, sudoku:dict, indices):
-
     def update(model, sudoku, i, j, n):
         r1, c1 = indices[i]
         r2, c2 = indices[j]
@@ -126,7 +125,8 @@ def set_constraint_no_duplicates(model, sudoku:dict, indices):
                     sudoku[r2][c2][n].Not(),                                \
                 ])
 
-    [update(model, sudoku, i, j, n) for i in range(len(indices))            \
+    [update(model, sudoku, i, j, n)                                         \
+            for i in range(len(indices))                                    \
             for j in range(i+1, len(indices))                               \
             for n in numbers()]
 
@@ -135,7 +135,8 @@ def set_constraint_no_duplicates(model, sudoku:dict, indices):
 def set_constraint_all_numbers_present(model, sudoku:dict, indices):
     for n in numbers():
         variables = []
-        [variables.append(sudoku[r][c][n]) for r, c in indices]
+        for r, c in indices:
+            variables.append(sudoku[r][c][n])
         model.AddBoolOr(variables)
 
 

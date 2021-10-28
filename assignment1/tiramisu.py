@@ -132,13 +132,40 @@ def main():
                             person_dessert=person_dessert)
 
     # Explicit Constraint 1
+    # Emily does not like prawn cocktail as starter,
+    # nor does she want baked mackerel as main course
     model.AddBoolAnd([person_starter["Emily"]["Prawn_Cocktail"].Not()])
     model.AddBoolAnd([person_maincourse["Emily"]["Baked_Mackerel"].Not()])
 
     # Explicit Constraint 2
+    # Daniel does not want the onion soup as starter and James does not drink beer
     model.AddBoolAnd([person_starter["Daniel"]["Onion_Soup"].Not()])
     model.AddBoolAnd([person_drink["James"]["Beer"].Not()])
 
+    # Explicit Constraint 3
+    # Sophie will only have fried chicken as main course
+    # if she does not have to take the prawn cocktail as starter
+    model.AddBoolOr(                                                        \
+                [                                                           \
+                    person_starter["Sophie"]["Prawn_Cocktail"],             \
+                    person_maincourse["Sophie"]["Fried_Chicken"]            \
+                ]                                                           \
+            )
+
+    # Explicit constraint 4
+    # The filet steak main course should be combined with the
+    # onion soup as starter and with the apple crumble for dessert
+    for person in PERSON:
+        model.AddBoolOr(                                                    \
+                [                                                           \
+                    person_maincourse[person]["Filet_Steak"].Not(),         \
+                    person_starter[person]["Onion_Soup"]                    \
+                ])
+        model.AddBoolOr(                                                    \
+                [                                                           \
+                    person_starter[person]["Onion_Soup"].Not(),             \
+                    person_maincourse[person]["Filet_Steak"]                \
+                ])
 
 
     solver = cp_model.CpSolver()

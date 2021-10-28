@@ -131,6 +131,14 @@ def main():
                         person_drink=person_drink,                          \
                         person_dessert=person_dessert)
 
+    # Explicit Constraint 1
+    model.AddBoolAnd([person_starter["Emily"]["Prawn_Cocktail"].Not()])
+    model.AddBoolAnd([person_maincourse["Emily"]["Baked_Mackerel"].Not()])
+
+    # Explicit Constraint 2
+    model.AddBoolAnd([person_starter["Daniel"]["Onion_Soup"].Not()])
+    model.AddBoolAnd([person_drink["James"]["Beer"].Not()])
+
     solver = cp_model.CpSolver()
     status = solver.SearchForAllSolutions(model, solution_printer)
     print(solver.StatusName(status))

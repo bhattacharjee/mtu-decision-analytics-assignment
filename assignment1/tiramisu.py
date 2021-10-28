@@ -59,13 +59,13 @@ class SolutionPrinter(cp_model.CpSolverSolutionCallback):
 
         for person in self.person:
             print(f"- {person}")
-            [print(f" - {dessert}") for dessert in self.dessert\
+            [print(f"     - {dessert}") for dessert in self.dessert\
                     if self.Value(self.person_dessert[person][dessert])]
-            [print(f" - {drink}") for drink in self.drink\
+            [print(f"     - {drink}") for drink in self.drink\
                     if self.Value(self.person_drink[person][drink])]
-            [print(f" - {starter}") for starter in self.starter\
+            [print(f"     - {starter}") for starter in self.starter\
                     if self.Value(self.person_starter[person][starter])]
-            [print(f" - {maincourse}") for maincourse in self.maincourse\
+            [print(f"     - {maincourse}") for maincourse in self.maincourse\
                     if self.Value(self.person_maincourse[person][maincourse])]
         
         print()

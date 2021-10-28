@@ -320,6 +320,39 @@ def main():
                 person_dessert["Daniel"]["Ice_Cream"].Not(),                \
                 person_drink["Daniel"]["Coke"].Not()                        \
             ])
+    solver = cp_model.CpSolver()
+    status = solver.SearchForAllSolutions(model, solution_printer)
+    print(solver.StatusName(status))
+
+if "__main__" == __name__:
+    main()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     """
     model.AddBoolAnd([person_dessert["Daniel"]["Chocolate_Cake"]])
     model.AddBoolAnd(
@@ -329,10 +362,3 @@ def main():
                 person_drink["James"]["Coke"].Not(),
             ])
     """
-    solver = cp_model.CpSolver()
-    status = solver.SearchForAllSolutions(model, solution_printer)
-    print(solver.StatusName(status))
-
-if "__main__" == __name__:
-    main()
-

@@ -33,10 +33,29 @@ class SolutionPrinter(cp_model.CpSolverSolutionCallback):
         self.person_dessert = person_dessert
         self.solutions = 0
 
+    def validate_matrix(self, matrix:dict, axis1:list, axis2:list):
+        for v1 in axis1:
+            i = 0
+            for v2 in axis2:
+                if self.Value(matrix[v1][v2]): i = i + 1
+            assert(i == 1)
+        for v2 in axis2:
+            i = 0
+            for v1 in axis1:
+                if self.Value(matrix[v1][v2]): i = i + 1
+            assert(i == 1)
+
+
     def OnSolutionCallback(self):
         self.solutions = self.solutions + 1
         print(f"Solution #{self.solutions:06d}")
         print("----------------")
+
+        self.validate_matrix(self.person_dessert, self.person, self.dessert)
+        self.validate_matrix(self.person_drink, self.person, self.drink)
+        self.validate_matrix(self.person_maincourse, self.person, self.maincourse)
+        self.validate_matrix(self.person_starter, self.person, self.starter)
+        
 
         for person in self.person:
             print(f"- {person}")
@@ -48,6 +67,7 @@ class SolutionPrinter(cp_model.CpSolverSolutionCallback):
                     if self.Value(self.person_starter[person][starter])]
             [print(f" - {maincourse}") for maincourse in self.maincourse\
                     if self.Value(self.person_maincourse[person][maincourse])]
+        
         print()
         print()
 
@@ -153,8 +173,8 @@ def main():
     # if she does not have to take the prawn cocktail as starter
     model.AddBoolOr(                                                        \
                 [                                                           \
-                    person_starter["Sophie"]["Prawn_Cocktail"],             \
-                    person_maincourse["Sophie"]["Fried_Chicken"]            \
+                    person_starter["Sophie"]["Prawn_Cocktail"].Not(),       \
+                    person_maincourse["Sophie"]["Fried_Chicken"].Not()      \
                 ]                                                           \
             )
     # ---------------------
@@ -196,6 +216,11 @@ def main():
                 [                                                           \
                     person_starter[person]["Mushroom_Tart"].Not(),          \
                     person_drink[person]["Red_Wine"]                        \
+                ])
+        model.AddBoolOr(                                                    \
+                [                                                           \
+                    person_starter[person]["Mushroom_Tart"],                \
+                    person_drink[person]["Red_Wine"].Not()                  \
                 ])
     # ---------------------
 
@@ -295,7 +320,15 @@ def main():
                 person_dessert["Daniel"]["Ice_Cream"].Not(),                \
                 person_drink["Daniel"]["Coke"].Not()                        \
             ])
-
+    """
+    model.AddBoolAnd([person_dessert["Daniel"]["Chocolate_Cake"]])
+    model.AddBoolAnd(
+            [                                                               \
+                person_dessert["James"]["Chocolate_Cake"].Not(),            \
+                person_dessert["James"]["Ice_Cream"].Not(),                \
+                person_drink["James"]["Coke"].Not(),
+            ])
+    """
     solver = cp_model.CpSolver()
     status = solver.SearchForAllSolutions(model, solution_printer)
     print(solver.StatusName(status))

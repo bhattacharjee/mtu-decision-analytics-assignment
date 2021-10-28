@@ -46,8 +46,7 @@ class SolutionPrinter(cp_model.CpSolverSolutionCallback):
         count = 0
         for k in numbers():
             if self.Value(self.sudoku[i][j][k]): count = count + 1
-        if (1 != count):
-            print(f"sudoku[{i},{j}] has {count} values")
+        if (1 != count): print(f"sudoku[{i},{j}] has {count} values")
         assert(count == 1)
 
     def validate_solution(self):

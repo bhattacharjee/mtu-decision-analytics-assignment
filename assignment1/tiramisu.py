@@ -12,16 +12,16 @@ DESSERT = ["Apple_Crumble", "Ice_Cream", "Chocolate_Cake", "Tiramisu"]
 class SolutionPrinter(cp_model.CpSolverSolutionCallback):
     def __init__(\
             self,
-            person,
-            starter,
-            maincourse,
-            drink,
-            dessert,
-            person_starter,
-            person_maincourse,
-            person_drink,
-            perrson_dessert):
-        super().__init__(self)
+            person:list,
+            starter:list,
+            maincourse:list,
+            drink:list,
+            dessert:list,
+            person_starter:dict,
+            person_maincourse:dict,
+            person_drink:dict,
+            person_dessert:dict):
+        super().__init__()
         self.person = person
         self.starter = starter
         self.maincourse = maincourse
@@ -35,19 +35,58 @@ class SolutionPrinter(cp_model.CpSolverSolutionCallback):
 
     def OnSolutionCallback(self):
         self.solutions = self.solutions + 1
-        print(f"Solution #{self.solutions}")
-        print("---------------------------------------------------------------")
+        print(f"Solution #{self.solutions:06d}")
+        print("----------------")
 
         for person in self.person:
             print(f"- {person}")
-            [print(f" - {color}") for color in self.color\
-                    if self.Value(self.person_color[person][color])]
             [print(f" - {starter}") for starter in self.starter\
                     if self.Value(self.person_starter[person][starter])]
+            [print(f" - {maincourse}") for maincourse in self.maincourse\
+                    if self.Value(self.person_maincourse[person][maincourse])]
             [print(f" - {dessert}") for dessert in self.dessert\
                     if self.Value(self.person_dessert[person][dessert])]
             [print(f" - {drink}") for drink in self.drink\
                     if self.Value(self.person_drink[person][drink])]
-            print()
+        print()
+        print()
 
+
+def create_cross_condition(model, var_list1:list, var_list2: list)->dict:
+
+    # Create the variables
+    ret_dict = {}
+    for var1 in var_list1:
+        variables = {}
+        for var2 in var_list2:
+            variables[var2] = model.NewBoolVar(f"{var1}--{var2}")
+        ret_dict[var1] = variables
+
+    return ret_dict
+
+
+def main():
+    model = cp_model.CpModel()
+
+    person_starter = create_cross_condition(model, PERSON, STARTER)
+    person_maincourse = create_cross_condition(model, PERSON, MAINCOURSE)
+    person_drink = create_cross_condition(model, PERSON, DRINK)
+    person_dessert = create_cross_condition(model, PERSON, DESSERT)
+
+    solution_printer = SolutionPrinter(                             \
+                        person=PERSON,                              \
+                        starter=STARTER,                            \
+                        maincourse=MAINCOURSE,                      \
+                        drink=DRINK,                                \
+                        dessert=DESSERT,                            \
+                        person_starter=person_starter,              \
+                        person_maincourse=person_maincourse,        \
+                        person_drink=person_drink,                  \
+                        person_dessert=person_dessert)
+    solver = cp_model.CpSolver()
+    status = solver.SearchForAllSolutions(model, solution_printer)
+    print(solver.StatusName(status))
+
+if "__main__" == __name__:
+    main()
 

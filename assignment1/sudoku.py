@@ -14,19 +14,10 @@ def column(c:int) -> list:
 
 def square(ind: tuple) -> list:
     r, c = ind
-    retval = []
-    for i in range(3):
-        for j in range(3):
-            retval.append((r+i, c+j,))
-    return retval
+    return [(r+i,c+j) for i in range(3) for j in range(3)]
 
 def square_starts() -> list:
-    retval = []
-    for i in range(0, 9, 3):
-        for j in range(0, 9, 3):
-            retval.append((i, j,))
-    return retval
-
+    return [(i, j) for i in range(0,9,3) for j in range(0,9,3)]
 
 class SolutionPrinter(cp_model.CpSolverSolutionCallback):
     def __init__(\
@@ -52,23 +43,21 @@ class SolutionPrinter(cp_model.CpSolverSolutionCallback):
 
 
     def validate_solution(self):
-        for i in range(9):
-            for j in range(9):
-                count = 0
-                for k in numbers():
-                    if self.Value(self.sudoku[i][j][k]): count = count + 1
-                if (1 != count):
-                    print(f"sudoku[{i},{j}] has {count} values")
-                assert(count == 1)
+        def validate_cell(i, j):
+            count = 0
+            for k in numbers():
+                if self.Value(self.sudoku[i][j][k]): count = count + 1
+            if (1 != count):
+                print(f"sudoku[{i},{j}] has {count} values")
+            assert(count == 1)
 
-        for i in range(9):
-            self.validate_all_numbers_present(row(i))
-            self.validate_all_numbers_present(column(i))
-            pass
+        [validate_cell(i, j) for i in range(9) for j in range(9)]
+        [self.validate_all_numbers_present(row(i)) for i in range(9)]
+        [self.validate_all_numbers_present(column(i)) for i in range(9)]
 
-        for sqs in square_starts():
-            self.validate_all_numbers_present(square(sqs))
-            pass
+        [self.validate_all_numbers_present(square(sqs)) for \
+                sqs in square_starts()]
+
 
 
     def OnSolutionCallback(self):

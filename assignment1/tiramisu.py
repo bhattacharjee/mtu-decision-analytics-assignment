@@ -275,11 +275,23 @@ def main():
 
     # Explicit Constraint 9
     # ---------------------
-    # One of the men has chocolate cake for dessert
+    # One of the men has chocolate cake for dessert while the other
+    # prefers not to have ice cream or coke but
+    # will accept one of the two if necessary
     model.AddBoolOr(                                                        \
             [                                                               \
                 person_dessert["James"]["Chocolate_Cake"],                  \
                 person_dessert["Daniel"]["Chocolate_Cake"]                  \
+            ])
+    model.AddBoolOr(                                                        \
+            [                                                               \
+                person_dessert["James"]["Ice_Cream"].Not(),                 \
+                person_drink["James"]["Coke"].Not()                         \
+            ])
+    model.AddBoolOr(                                                        \
+            [                                                               \
+                person_dessert["Daniel"]["Ice_Cream"].Not(),                \
+                person_drink["Daniel"]["Coke"].Not()                        \
             ])
 
 

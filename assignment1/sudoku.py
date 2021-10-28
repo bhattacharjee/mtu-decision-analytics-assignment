@@ -83,7 +83,7 @@ class SolutionPrinter(cp_model.CpSolverSolutionCallback):
         print()
 
 
-def create_variables(model):
+def create_variables(model) -> dict:
     def get_inner_dict(i, j):
         return {k: model.NewBoolVar(f"--[{i},{j}]->{k}--") for k in numbers()}
 

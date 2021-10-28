@@ -36,40 +36,47 @@ class SolutionPrinter(cp_model.CpSolverSolutionCallback):
         self.sudoku = sudoku
         self.solutions = 0
 
-    def validate(self, sudoku:dict):
 
+    def validate_all_numbers_present(self, indices:dict):
+        s = set()
+        count = 0
+        for i, j in indices:
+            for k in numbers():
+                if self.Value(self.sudoku[i][j][k]):
+                    count = count + 1
+                    s.add(k)
+        if (len(s) != 9 or count != 9):
+            print("Either all numbers not present, or some are repeated" +  \
+                    "in squares ", indices)
+        assert(9 == len(s) and 9 == count)
+
+
+    def validate(self):
         # Each cell should have exactly one variable set
         for i in range(9):
             for j in range(9):
-                count = 1
+                count = 0
                 for k in numbers():
-                    if self.Value(sudoku[i][j][k]): count = count + 1
+                    if self.Value(self.sudoku[i][j][k]): count = count + 1
                 if (1 != count):
                     print(f"sudoku[{i},{j}] has {count} values")
                 assert(count == 1)
 
-        # Each column should have exactly one variable for each number set
         for i in range(9):
-            s = set()
-            for j in range(9):
-                for k in numbers():
-                    if self.Value(sudoku[i][j][k]):
-                        s.add(k)
-            for n in numbers():
-                if n not in s:
-                    print(f"Number {n} not present in row {i}")
-                assert(n in s)
-                if len(s) != len(numbers()):
-                    print(f"Not all numbers present in row {i}")
-                assert(len(s) == len(numbers()))
+            self.validate_all_numbers_present(row(i))
+            self.validate_all_numbers_present(column(i))
+            pass
 
+        for sqs in square_starts():
+            self.validate_all_numbers_present(square(sqs))
+            pass
 
 
     def OnSolutionCallback(self):
         self.solutions = self.solutions + 1
-        print(f"Solution #{self.solutions:06d}")
+        print(f"Solution # {self.solutions}")
         print("=======+===+===+===+===+===+===+===+===+===+")
-        #self.validate(self.sudoku)
+        self.validate()
 
         print("       | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |")
         print("=======+===+===+===+===+===+===+===+===+===+")
@@ -83,8 +90,6 @@ class SolutionPrinter(cp_model.CpSolverSolutionCallback):
             output_line = output_line + f" |"
             print(output_line)
             print("-------+---+---+---+---+---+---+---+---+---+")
-        print()
-        print()
         print()
         print()
 
@@ -114,11 +119,11 @@ def set_constraint_one_number_per_cell(model, sudoku:dict):
 
 def set_constraint_no_duplicates_generic(model, sudoku:dict, indices):
     # Ensure that there are no duplicates in the set of indices passed
-    for ii in range(len(indices)):
-        for jj in range(ii + 1, len(indices)):
+    for i in range(len(indices)):
+        for j in range(i + 1, len(indices)):
             for n in numbers():
-                r1, c1 = indices[ii]
-                r2, c2 = indices[jj]
+                r1, c1 = indices[i]
+                r2, c2 = indices[j]
                 model.AddBoolOr(                                            \
                         [                                                   \
                             sudoku[r1][c1][n].Not(),                        \

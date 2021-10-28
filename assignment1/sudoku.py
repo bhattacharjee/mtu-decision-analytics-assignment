@@ -2,8 +2,31 @@
 
 from ortools.sat.python import cp_model
 
-def numbers():
+def numbers() -> list:
     return [x for x in range(1,10)]
+
+
+def row(r:int) -> list:
+    return [(r, i) for i in range(9)]
+
+def column(c:int) -> list:
+    return [(i, c) for i in range(9)]
+
+def square(ind: tuple) -> list:
+    r, c = ind
+    retval = []
+    for i in range(3):
+        for j in range(3):
+            retval.append((r+i, c+j,))
+    return retval
+
+def square_starts() -> list:
+    retval = []
+    for i in range(0, 9, 3):
+        for j in range(0, 9, 3):
+            retval.append((i, j,))
+    return retval
+
 
 class SolutionPrinter(cp_model.CpSolverSolutionCallback):
     def __init__(\
@@ -80,10 +103,45 @@ def create_variables(model):
     return ret_dict
 
 
+def constraint_one_number_per_cell(model, sudoku:dict):
+    for r in range(9):
+        for c in range(9):
+            variables = []
+            for n in numbers():
+                variables.append(sudoku[r][c][n])
+            model.AddBoolOr(variables)
+
+
+def constraint_no_duplicates_generic(model, sudoku:dict, indices):
+    # Ensure that there are no duplicates in the set of indices passed
+    for ii in range(len(indices)):
+        for jj in range(ii + 1, len(indices)):
+            for n in numbers():
+                r1, c1 = indices[ii]
+                r2, c2 = indices[jj]
+                model.AddBoolOr(                                            \
+                        [                                                   \
+                            sudoku[r1][c1][n].Not(),                        \
+                            sudoku[r2][c2][n].Not(),                        \
+                        ])
+
+
+
 def main():
     model = cp_model.CpModel()
 
     sudoku = create_variables(model)
+
+    constraint_one_number_per_cell(model, sudoku)
+
+    # No duplicates in each row and each column
+    for i in range(9):
+        constraint_no_duplicates_generic(model, sudoku, row(i))
+        constraint_no_duplicates_generic(model, sudoku, column(i))
+
+    # No duplicates in each sub-square
+    for sqs in square_starts():
+        constraint_no_duplicates_generic(model, sudoku, square(sqs))
 
     solver = cp_model.CpSolver()
     solution_printer = SolutionPrinter(sudoku)

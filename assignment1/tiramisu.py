@@ -273,11 +273,14 @@ def main():
 
 
 
-
-
-
-
-
+    # Explicit Constraint 9
+    # ---------------------
+    # One of the men has chocolate cake for dessert
+    model.AddBoolOr(                                                        \
+            [                                                               \
+                person_dessert["James"]["Chocolate_Cake"],                  \
+                person_dessert["Daniel"]["Chocolate_Cake"]                  \
+            ])
 
 
     solver = cp_model.CpSolver()

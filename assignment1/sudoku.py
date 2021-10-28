@@ -5,7 +5,6 @@ from ortools.sat.python import cp_model
 def numbers() -> list:
     return [x for x in range(1,10)]
 
-
 def row(r:int) -> list:
     return [(r, i) for i in range(9)]
 
@@ -13,8 +12,7 @@ def column(c:int) -> list:
     return [(i, c) for i in range(9)]
 
 def square(ind: tuple) -> list:
-    r, c = ind
-    return [(r+i,c+j) for i in range(3) for j in range(3)]
+    return [(i + ind[0], j + ind[1]) for i in range(3) for j in range(3)]
 
 def square_starts() -> list:
     return [(i, j) for i in range(0,9,3) for j in range(0,9,3)]
@@ -26,7 +24,6 @@ class SolutionPrinter(cp_model.CpSolverSolutionCallback):
         super().__init__()
         self.sudoku = sudoku
         self.solutions = 0
-
 
     def validate_all_numbers_present(self, indices:dict):
         s = set()
@@ -43,7 +40,6 @@ class SolutionPrinter(cp_model.CpSolverSolutionCallback):
             print("Either all numbers not present, or some are repeated" +  \
                     "in squares ", indices)
         assert(9 == len(s) and 9 == count)
-
 
     def validate_solution(self):
 
@@ -63,8 +59,6 @@ class SolutionPrinter(cp_model.CpSolverSolutionCallback):
 
         [self.validate_all_numbers_present(square(sqs)) for \
                 sqs in square_starts()]
-
-
 
     def OnSolutionCallback(self):
         self.validate_solution()

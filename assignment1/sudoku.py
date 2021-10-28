@@ -51,8 +51,7 @@ class SolutionPrinter(cp_model.CpSolverSolutionCallback):
         assert(9 == len(s) and 9 == count)
 
 
-    def validate(self):
-        # Each cell should have exactly one variable set
+    def validate_solution(self):
         for i in range(9):
             for j in range(9):
                 count = 0
@@ -73,13 +72,14 @@ class SolutionPrinter(cp_model.CpSolverSolutionCallback):
 
 
     def OnSolutionCallback(self):
+        self.validate_solution()
         self.solutions = self.solutions + 1
+
         print(f"Solution # {self.solutions}")
         print("=======+===+===+===+===+===+===+===+===+===+")
-        self.validate()
-
         print("       | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |")
         print("=======+===+===+===+===+===+===+===+===+===+")
+
         for i in range(9):
             output_line = f"   {i}  "
             for j in range(9):
@@ -90,6 +90,7 @@ class SolutionPrinter(cp_model.CpSolverSolutionCallback):
             output_line = output_line + f" |"
             print(output_line)
             print("-------+---+---+---+---+---+---+---+---+---+")
+
         print()
         print()
 
@@ -117,7 +118,7 @@ def set_constraint_one_number_per_cell(model, sudoku:dict):
             model.AddBoolOr(variables)
 
 
-def set_constraint_no_duplicates_generic(model, sudoku:dict, indices):
+def set_constraint_no_duplicates(model, sudoku:dict, indices):
     # Ensure that there are no duplicates in the set of indices passed
     for i in range(len(indices)):
         for j in range(i + 1, len(indices)):
@@ -131,7 +132,7 @@ def set_constraint_no_duplicates_generic(model, sudoku:dict, indices):
                         ])
 
 
-def set_constraint_all_numbers_present_generic(model, sudoku:dict, indices):
+def set_constraint_all_numbers_present(model, sudoku:dict, indices):
     for n in numbers():
         variables = []
         for r, c in indices:
@@ -167,21 +168,21 @@ def main():
 
     # No duplicates in each row and each column
     for i in range(9):
-        set_constraint_no_duplicates_generic(model, sudoku, row(i))
-        set_constraint_no_duplicates_generic(model, sudoku, column(i))
+        set_constraint_no_duplicates(model, sudoku, row(i))
+        set_constraint_no_duplicates(model, sudoku, column(i))
 
     # No duplicates in each sub-square
     for sqs in square_starts():
-        set_constraint_no_duplicates_generic(model, sudoku, square(sqs))
+        set_constraint_no_duplicates(model, sudoku, square(sqs))
 
     # Every number in each row and each column
     for i in range(9):
-        set_constraint_all_numbers_present_generic(model, sudoku, row(i))
-        set_constraint_all_numbers_present_generic(model, sudoku, column(i))
+        set_constraint_all_numbers_present(model, sudoku, row(i))
+        set_constraint_all_numbers_present(model, sudoku, column(i))
 
     # Every number in each sub-square
     for sqs in square_starts():
-        set_constraint_all_numbers_present_generic(model, sudoku, square(sqs))
+        set_constraint_all_numbers_present(model, sudoku, square(sqs))
 
     set_explicit_constraints(model, sudoku)
 

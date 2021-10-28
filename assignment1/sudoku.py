@@ -41,17 +41,17 @@ class SolutionPrinter(cp_model.CpSolverSolutionCallback):
                     "in squares ", indices)
         assert(9 == len(s) and 9 == count)
 
+    def validate_cell(self, i, j):
+        # Each cell should have exactly one number
+        count = 0
+        for k in numbers():
+            if self.Value(self.sudoku[i][j][k]): count = count + 1
+        if (1 != count):
+            print(f"sudoku[{i},{j}] has {count} values")
+        assert(count == 1)
+
     def validate_solution(self):
-
-        def validate_cell(i, j):
-            count = 0
-            for k in numbers():
-                if self.Value(self.sudoku[i][j][k]): count = count + 1
-            if (1 != count):
-                print(f"sudoku[{i},{j}] has {count} values")
-            assert(count == 1)
-
-        [validate_cell(i, j) for i in range(9) for j in range(9)]
+        [self.validate_cell(i, j) for i in range(9) for j in range(9)]
 
         [self.validate_all_numbers_present(row(i)) for i in range(9)]
 

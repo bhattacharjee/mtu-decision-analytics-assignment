@@ -31,16 +31,13 @@ class SolutionPrinter(cp_model.CpSolverSolutionCallback):
     def validate_all_numbers_present(self, indices:dict):
         s = set()
         count = 0
-
         def update(i, j, k):
-            nonlocal count
-            nonlocal s
+            nonlocal count, s
             if self.Value(self.sudoku[i][j][k]):
                 count = count + 1
                 s.add(k)
 
         [update(i, j, k) for i, j in indices for k in numbers()]
-
         if (len(s) != 9 or count != 9):
             print("Either all numbers not present, or some are repeated" +  \
                     "in squares ", indices)

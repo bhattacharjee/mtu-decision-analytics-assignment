@@ -40,7 +40,7 @@ class ProjectSolutionPrinter(cp_model.CpSolverSolutionCallback):
                     print(f"problem in OnSolutionCallback, #cont = {len(c)}")
                     assert(False)
                 solution[p].append((m, j, c[0]))
-        for p, mjclist in soln.items():
+        for p, mjclist in solution.items():
             print(p, mjclist)
         profit = self.project.validate_and_get_profit(solution)
         print()
@@ -71,27 +71,20 @@ class Project:
         self.var_pmjc = {}
 
         # 3-D dict of variables: Project, Month, Contractor
-        self.var_pmc = {}
 
         self.read_excel(self.excel_file)
 
         self.create_p_variables()
         self.create_pmjc_variables()
-        self.create_pmc_variables()
 
         self.create_constraints_between_projects()
-
-        self.create_pmjc_pmc_constraints()
-
-        # TODO: This seems to create problems
-        # self.create_pmc_p_constraints()
 
         self.create_pmjc_p_constraints()
         
         self.constraint_contractor_single_simultaneous_project()
 
         # TODO: This makes it infeasible for some reason
-        # self.create_constraint_one_contractor_per_job()
+        self.create_constraint_one_contractor_per_job()
 
         self.constraint_complete_all_jobs_for_project_on_time()
 
@@ -107,6 +100,7 @@ class Project:
         contractors = set()
         months = set()
         jobs = set()
+
         for p, mjclist in soln.items():
             for m, j, c in mjclist:
                 contractors.add(c)
@@ -117,6 +111,43 @@ class Project:
                 cjcost = self.get_contractor_job_cost(c, j)
                 if math.isnan(cjcost):
                     print("infeasible {cjcost}: {c} cannot do {j}")
+                    
+        for p, mjclist in soln.items():
+            for mm in months:
+                for cc in contractors:
+                    count = 0
+                    for m, j, c in mjclist:
+                        if m == mm and c == cc:
+                            count = count + 1
+                    if (count > 1):
+                        print("Simultaneous work: {mm} {cc} {count}")
+                        assert(False)
+
+        for p, mjclist in soln.items():
+            mjlist = self.get_project_job_month_relationships()[p]
+            if len(mjlist) != len(mjclist):
+                print(f"Number of jobs for {p} don't match: {mjlist} {mjclist}")
+                assert(False)
+                temp = sorted([(m, j,) for m, j, c in mjclist])
+                temp2 = sorted(mjlist)
+                for i, j in zip(temp, temp2):
+                    if i != j:
+                        print(f"Mismatch in {p}, {temp}, {temp2}")
+                        assert(False)
+        
+        # No contractor should have jobs in parallel
+        cmcount = {(c, m,):0 for c in contractors for m in months}
+        for p, mjclist in soln.items():
+            for m, j, c in mjclist:
+                try:
+                    cmcount[(c,m,)] = cmcount[(c,m,)] + 1
+                except Exception as e:
+                    print("Error adding to cmcount")
+                    print(e)
+        for k, count in cmcount.items():
+            if (count > 1):
+                print(f"count = {count} for {k}")
+                assert(False)
         return 0
 
     def validate_and_get_profit(self, soln:dict)->int:
@@ -203,66 +234,6 @@ class Project:
                 prj_variables[month] = mnth_variables
             self.var_pmjc[project] = prj_variables
 
-    def create_pmc_variables(self):
-        # 3-D array of variables: Project, Month
-        for project in self.project_names:
-            prj_variables = {}
-            for month in self.month_names:
-                mnth_variables = {}
-                for cntr in self.contractor_names:
-                    mnth_variables[cntr] = self.model.NewBoolVar(           \
-                            f"{project}-{month}-{cntr}")
-                prj_variables[month] = mnth_variables
-            self.var_pmc[project] = prj_variables
-
-    def create_pmjc_pmc_constraints(self):
-        # if any variable in pmjc is True
-        # then corresponding variable in pmc should be true
-        for p in self.project_names:
-            for m in self.month_names:
-                for j in self.job_names:
-                    for c in self.contractor_names:
-                        self.model.AddBoolOr(                               \
-                                [                                           \
-                                    self.var_pmjc[p][m][j][c].Not(),        \
-                                    self.var_pmc[p][m][c],                  \
-                                ])
-        # if a variable in pmc is true,
-        # then at least one of the variables in pmjc should be true
-        for p in self.project_names:
-            for m in self.month_names:
-                for c in self.contractor_names:
-                    #variables = [self.var_pmc[p][m][c].Not()]
-                    variables = []
-                    for j in self.job_names:
-                        variables.append(self.var_pmjc[p][m][j][c])
-                    self.model.AddBoolOr(variables)                         \
-                            .OnlyEnforceIf(self.var_pmc[p][m][c])
-
-    def create_pmc_p_constraints(self):
-        # If an entry in pmc is True then the corresponding entry in p
-        # must also be true
-        for p in self.project_names:
-            for m in self.month_names:
-                for c in self.contractor_names:
-                    self.model.AddBoolOr(                                   \
-                            [                                               \
-                                self.var_pmc[p][m][c].Not(),                \
-                                self.var_p[p],                              \
-                            ])
-        # if an entry in p is true, then the count in pmc must match
-        # Since no job is repeated in any project, we can take advantae of this
-        # and simplify the constraints
-        for p, mjlist in self.get_project_job_month_relationships().items():
-            njobs = len(mjlist)
-            variables = []
-            for j in self.job_names:
-                for m in self.month_names:
-                    for c in self.contractor_names:
-                        variables.append(self.var_pmjc[p][m][j][c])
-            self.model.Add(sum(variables) == njobs)
-
-
     def create_pmjc_p_constraints(self):
         # if an entry in pmjc is True then the corresponding entry in p must
         # also be true
@@ -277,10 +248,17 @@ class Project:
                                 ])
 
     def constraint_contractor_single_simultaneous_project(self):
+        # This constraint can be simplified, since a contractor can only do
+        # one project at a time, that implies he can only do one job
+        # at a time
+        # For each month, for each contractor -> count of jobs = 1
         for m in self.month_names:
             for c in self.contractor_names:
-                allprj = [self.var_pmc[p][m][c] for p in self.project_names]
-                self.model.Add(sum(allprj) <= 1)
+                variables = []
+                for p in self.project_names:
+                    for j in self.job_names:
+                        variables.append(self.var_pmjc[p][m][j][c])
+                self.model.Add(sum(variables) <= 1)
 
     def get_project_job_month_relationships(self)->dict:
         # return a hash: project -> [(month, job) ....]
@@ -355,16 +333,16 @@ class Project:
         # Only one contractor per job
 
         def add_constraint(p:str, j:str):
-            # Only one contractor per job for every project
-            variables = []
-            for c in self.contractor_names:
-                for m in self.month_names:
+            # Only one contractor per job for every project, in a given month
+            for m in self.month_names:
+                variables = []
+                for c in self.contractor_names:
                     variables.append(self.var_pmjc[p][m][j][c])
-            self.model.Add(sum(variables) <= 1).OnlyEnforceIf(self.var_p[p])
+                self.model.Add(sum(variables) <= 1).OnlyEnforceIf(self.var_p[p])
 
         rltn = self.get_project_job_month_relationships()
-        for p, monthjobarr in rltn.items():
-            for m, j in monthjobarr:
+        for p, mjlist in rltn.items():
+            for m, j in mjlist:
                 add_constraint(p, j)
 
 

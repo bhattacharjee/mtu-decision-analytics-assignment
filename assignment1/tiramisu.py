@@ -275,27 +275,6 @@ def main():
                 person_drink["Sophie"]["White_Wine"],                       \
                 person_drink["Sophie"]["Red_Wine"]                          \
             ])
-    model.AddBoolOr(                                                        \
-            [                                                               \
-                person_drink["Emily"]["White_Wine"].Not(),                  \
-                person_drink["Sophie"]["Red_Wine"]                          \
-            ])
-    model.AddBoolOr(                                                        \
-            [                                                               \
-                person_drink["Emily"]["Red_Wine"].Not(),                    \
-                person_drink["Sophie"]["White_Wine"]                        \
-            ])
-    model.AddBoolOr(                                                        \
-            [                                                               \
-                person_drink["Sophie"]["White_Wine"].Not(),                 \
-                person_drink["Emily"]["Red_Wine"]                           \
-            ])
-    model.AddBoolOr(                                                        \
-            [                                                               \
-                person_drink["Sophie"]["Red_Wine"].Not(),                   \
-                person_drink["Emily"]["White_Wine"]                         \
-            ])
-
 
 
     # Explicit Constraint 9
@@ -360,5 +339,29 @@ if "__main__" == __name__:
                 person_dessert["James"]["Chocolate_Cake"].Not(),            \
                 person_dessert["James"]["Ice_Cream"].Not(),                \
                 person_drink["James"]["Coke"].Not(),
+            ])
+    """
+
+    """
+    # Commented out section of constraint 8
+    model.AddBoolOr(                                                        \
+            [                                                               \
+                person_drink["Emily"]["White_Wine"].Not(),                  \
+                person_drink["Sophie"]["Red_Wine"]                          \
+            ])
+    model.AddBoolOr(                                                        \
+            [                                                               \
+                person_drink["Emily"]["Red_Wine"].Not(),                    \
+                person_drink["Sophie"]["White_Wine"]                        \
+            ])
+    model.AddBoolOr(                                                        \
+            [                                                               \
+                person_drink["Sophie"]["White_Wine"].Not(),                 \
+                person_drink["Emily"]["Red_Wine"]                           \
+            ])
+    model.AddBoolOr(                                                        \
+            [                                                               \
+                person_drink["Sophie"]["Red_Wine"].Not(),                   \
+                person_drink["Emily"]["White_Wine"]                         \
             ])
     """

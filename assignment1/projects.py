@@ -35,11 +35,16 @@ class Project:
         # 4-D dict of variables: Project, Month, Job, Contractor
         self.var_pmjc = {}
 
+        # 3-D dict of variables: Project, Month, Contractor
+        self.var_pmc = {}
 
         self.read_excel(self.excel_file)
         self.create_project_variables_and_constraints()
 
-        self.create_matrix_variables()
+        self.create_pmjc_variables()
+        self.create_pmc_variables()
+        self.create_pmjc_pmc_constraints()
+
 
     def solve(self):
         solution_printer = ProjectSolutionPrinter()
@@ -83,15 +88,15 @@ class Project:
             # p1 implies p2
             self.model.AddBoolOr(                                           \
                     [                                                       \
-                        self.var_p[p1].Not(),                          \
-                        self.var_p[p2]                                 \
+                        self.var_p[p1].Not(),                               \
+                        self.var_p[p2]                                      \
                     ])
 
         def add_conflict_dependency(p1:str, p2:str)->None:
             self.model.AddBoolOr(                                           \
                     [                                                       \
-                        self.var_p[p1].Not(),                          \
-                        self.var_p[p2].Not()                           \
+                        self.var_p[p1].Not(),                               \
+                        self.var_p[p2].Not()                                \
                     ])
 
         for p1 in self.project_names:
@@ -104,7 +109,7 @@ class Project:
                     if ('conflict' == e_p1_p2.lower()):
                         add_conflict_dependency(p1, p2)
 
-    def create_matrix_variables(self):
+    def create_pmjc_variables(self):
         # 4-D array of variables: Project, Month, Job, Contractor
         for project in self.project_names:
             prj_variables = {}
@@ -117,7 +122,22 @@ class Project:
                                 f"{project}-{month}-{job}-{contractor}")
                     mnth_variables[job] = job_variables
                 prj_variables[month] = mnth_variables
-            self.var_p[project] = prj_variables
+            self.var_pmjc[project] = prj_variables
+
+    def create_pmc_variables(self):
+        # 3-D array of variables: Project, Month
+        for project in self.project_names:
+            prj_variables = {}
+            for month in self.month_names:
+                mnth_variables = {}
+                for cntr in self.contractor_names:
+                    mnth_variables[cntr] = self.model.NewBoolVar(           \
+                            f"{project}-{month}-{cntr}")
+                prj_variables[month] = mnth_variables
+            self.var_pmc[project] = prj_variables
+
+    def create_pmjc_pmc_constraints(self):
+        pass
 
     def get_project_job_month_relationships(self)->dict:
         # return a hash: project -> [(month, job) ....]
@@ -132,6 +152,32 @@ class Project:
             ret[prjname] = jobmonthlist 
         return ret
 
+    """
+    def constraint_contractor_single_simultaneous_project(self):
+        def get_job_vars(prj:str, cntr:str, mnth:str)->list:
+            return [self.var_pmjc[prj][mnth][j][cntr] for j in self.job_names]
+
+        def add_constraints(var1_list:list, var2_list):
+            # If any in var1 is true, then nothing in var2 should be true
+            # and vice versa
+            for v1 in var1_list:
+                for v2 in var2_list:
+                    self.model.AddBoolOr(                                   \
+                            [                                               \
+                                v1.Not(),                                   \
+                                v2.Not(),                                   \
+                            ])
+
+        for cntr in self.contractor_names:
+            for mnth in self.month_names:
+                for i in range(len(self.project_names)):
+                    for j in range(i+1, len(self.project_names)):
+                        prj1 = self.project_names[i]
+                        prj2 = self.project_names[j]
+                        vars1 = get_job_vars(prj1, cntr, mnth)
+                        vars2 = get_job_vars(prj2, cntr, mnth)
+                        add_constraints(vars1, vars2)
+    """
 
 
 def main():

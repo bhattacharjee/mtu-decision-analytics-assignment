@@ -93,7 +93,7 @@ class Project:
         self.add_profit_margin_constraint(2160)
     
 
-    def validate_solution(self, soln:dict)->int:
+    def validate_solution(self, soln:dict)->None:
         # solution is a dictionary
         # project -> [(m, j, c), ...]
         projects = set(soln.keys())
@@ -123,6 +123,8 @@ class Project:
                         print("Simultaneous work: {mm} {cc} {count}")
                         assert(False)
 
+        # Every job in every project must be done in time, and no extra
+        # jobs should be undertaken
         for p, mjclist in soln.items():
             mjlist = self.get_project_job_month_relationships()[p]
             if len(mjlist) != len(mjclist):
@@ -148,11 +150,13 @@ class Project:
             if (count > 1):
                 print(f"count = {count} for {k}")
                 assert(False)
+
+    def get_profit(self, soln:dict)->int:
         return 0
 
     def validate_and_get_profit(self, soln:dict)->int:
         self.validate_solution(soln)
-        return 0
+        return self.get_profit(soln)
 
 
     def solve(self):

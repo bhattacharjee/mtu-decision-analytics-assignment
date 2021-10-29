@@ -49,6 +49,8 @@ class Project:
         print(self.depend_df)
 
     def create_project_variables_and_constraints(self):
+        # Create a single variable for each project
+        # Also lookup the dependencies DF and add constraints accordingly
         for p in self.project_names:
             self.project_vars[p] = self.model.NewBoolVar(f"{p}")
 

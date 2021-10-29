@@ -80,10 +80,8 @@ def create_variables_and_implicit_constraints(
     # Create the variables
     ret_dict = {}
     for var1 in var_list1:
-        variables = {}
-        for var2 in var_list2:
-            variables[var2] = model.NewBoolVar(f"{var1}--{var2}")
-        ret_dict[var1] = variables
+        ret_dict[var1] =                                                    \
+            {var2: model.NewBoolVar(f"{var1}--{var2}") for var2 in var_list2}
 
     # Every item in var_list1 has a different property from var_list2
     for i in range(len(var_list1)):
@@ -98,10 +96,7 @@ def create_variables_and_implicit_constraints(
 
     # At least one item in var_list2 for each item in var_list1
     for v1 in var_list1:
-        variables = []
-        for v2 in var_list2:
-            variables.append(ret_dict[v1][v2])
-        model.AddBoolOr(variables)
+        model.AddBoolOr([ret_dict[v1][v2] for v2 in var_list2])
 
     # Max one property for every item in var_list1
     for v1 in var_list1:

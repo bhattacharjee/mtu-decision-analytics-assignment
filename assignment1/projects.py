@@ -37,9 +37,12 @@ class ProjectSolutionPrinter(cp_model.CpSolverSolutionCallback):
                     print(f"problem in OnSolutionCallback, #cont = {len(c)}")
                     assert(False)
                 solution[p].append((m, j, c[0]))
-        for p, mjclist in solution.items():
+        for p in sorted(solution.keys()):
+            mjclist = solution[p]
             print(p, mjclist)
         profit = self.project.validate_and_get_profit(solution)
+        print('-------------')
+        print(f"Profit = {profit}")
         print()
         print()
 
@@ -151,7 +154,14 @@ class Project:
                 assert(False)
 
     def get_profit(self, soln:dict)->int:
-        return 0
+        # solution is a dictionary
+        # project -> [(m, j, c), ...]
+        profit = 0
+        for p in soln.keys():
+            profit = profit + self.get_project_value(p)
+            for (m, j, c) in soln[p]:
+                profit = profit - self.get_contractor_job_cost(c, j)
+        return profit
 
     def validate_and_get_profit(self, soln:dict)->int:
         self.validate_solution(soln)

@@ -2,6 +2,7 @@
 
 import pandas as pd
 from ortools.sat.python import cp_model
+import sys
 
 class ProjectSolutionPrinter(cp_model.CpSolverSolutionCallback):
     def __init__(self):
@@ -10,7 +11,8 @@ class ProjectSolutionPrinter(cp_model.CpSolverSolutionCallback):
 
     def OnSolutionCallback(self):
         self.solutions = self.solutions + 1
-        print(f"Solution # {self.solutions}")
+        sys.stdout.write('.')
+        sys.stdout.flush()
 
 class Project:
 
@@ -25,6 +27,7 @@ class Project:
         self.month_names = None
         self.excel_file = excel_file
         self.model = cp_model.CpModel()
+        self.solver = cp_model.CpSolver()
 
         # One variable per project to indicate whether it is picked up or not
         self.varproject = {}
@@ -39,10 +42,10 @@ class Project:
         self.create_matrix_variables()
 
     def solve(self):
-        solver = cp_model.CpSolver()
         solution_printer = ProjectSolutionPrinter()
-        status = solver.SearchForAllSolutions(self.model, solution_printer)
-        print(solver.StatusName(status))
+        status = self.solver.SearchForAllSolutions(self.model, solution_printer)
+        print(self.solver.StatusName(status))
+        return self.solver, solution_printer.solutions
 
     def read_excel(self, excelfile:str) -> None:
         self.projects_df = pd.read_excel(excelfile, sheet_name='Projects')
@@ -119,6 +122,7 @@ class Project:
 
 def main():
     prj = Project('Assignment_DA_1_data.xlsx')
-    prj.solve()
+    solver, num_solutions = prj.solve()
+    print(f"{num_solutions} solutions")
 
 main()

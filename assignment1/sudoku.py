@@ -2,8 +2,8 @@
 
 from ortools.sat.python import cp_model
 
-def numbers() -> list:
-    for x in range(1,10): yield x
+def numbers() -> range:
+    return range(1,10)
 
 def row(r:int) -> list:
     return [(r, i) for i in range(9)]
@@ -65,20 +65,20 @@ class SolutionPrinter(cp_model.CpSolverSolutionCallback):
         self.solutions = self.solutions + 1
 
         print(f"Solution # {self.solutions}")
-        print("=======+===+===+===+===+===+===+===+===+===+")
-        print("       | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |")
-        print("=======+===+===+===+===+===+===+===+===+===+")
+        print("++=======+===+===+===+===+===+===+===+===+===++")
+        print("||   #   | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 ||")
+        print("++=======+===+===+===+===+===+===+===+===+===++")
 
         for i in range(9):
-            output_line = f"   {i}  "
+            output_line = f"||   {i}  "
             for j in range(9):
                 for k in numbers():
                     if self.Value(self.sudoku[i][j][k]):
                         output_line = output_line + f" | {k}"
                         break
-            output_line = output_line + f" |"
+            output_line = output_line + f" ||"
             print(output_line)
-            print("-------+---+---+---+---+---+---+---+---+---+")
+            print("++-------+---+---+---+---+---+---+---+---+---++")
 
         print()
         print()

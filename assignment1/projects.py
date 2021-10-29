@@ -44,6 +44,10 @@ class Project:
         self.create_pmjc_variables()
         self.create_pmc_variables()
         self.create_pmjc_pmc_constraints()
+        
+        self.constraint_contractor_single_simultaneous_project()
+
+        self.constraint_complete_all_jobs_for_project_on_time()
 
 
     def solve(self):
@@ -137,7 +141,32 @@ class Project:
             self.var_pmc[project] = prj_variables
 
     def create_pmjc_pmc_constraints(self):
-        pass
+        # if any variable in pmjc is True
+        # then corresponding variable in pmc should be true
+        for p in self.project_names:
+            for m in self.month_names:
+                for j in self.job_names:
+                    for c in self.contractor_names:
+                        self.model.AddBoolOr(                               \
+                                [                                           \
+                                    self.var_pmjc[p][m][j][c].Not(),        \
+                                    self.var_pmc[p][m][c],                  \
+                                ])
+        # if a variable in pmc is true,
+        # then at least one of the variables in pmjc should be true
+        for p in self.project_names:
+            for m in self.month_names:
+                for c in self.contractor_names:
+                    variables = [self.var_pmc[p][m][c].Not()]
+                    for j in self.job_names:
+                        variables.append(self.var_pmjc[p][m][j][c])
+                    self.model.AddBoolOr(variables)
+
+    def constraint_contractor_single_simultaneous_project(self):
+        for m in self.month_names:
+            for c in self.contractor_names:
+                allprj = [self.var_pmc[p][m][c] for p in self.project_names]
+                self.model.Add(sum(allprj) <= 1)
 
     def get_project_job_month_relationships(self)->dict:
         # return a hash: project -> [(month, job) ....]
@@ -152,6 +181,13 @@ class Project:
             ret[prjname] = jobmonthlist 
         return ret
 
+    def constraint_complete_all_jobs_for_project_on_time(self):
+        # If a job is selected, then each job for the project must be
+        # done in the month specified
+        rltn = self.get_project_job_month_relationships()
+        for project, jobmonth in rltn.items():
+            print(project, jobmonth)
+        pass
     """
     def constraint_contractor_single_simultaneous_project(self):
         def get_job_vars(prj:str, cntr:str, mnth:str)->list:

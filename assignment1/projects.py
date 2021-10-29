@@ -22,11 +22,8 @@ class ProjectSolutionPrinter(cp_model.CpSolverSolutionCallback):
 
     def OnSolutionCallback(self):
         self.solutions = self.solutions + 1
-        """
-        sys.stdout.write('.')
-        sys.stdout.flush()
-        """
-        print(f"Solution # {self.solutions}")
+        print(f"Solution # {self.solutions:02d}")
+        print("---------------------------")
         chosen_projects = [p for p in self.project.project_names if         \
                                 self.Value(self.project.var_p[p])]
 
@@ -87,6 +84,8 @@ class Project:
         self.create_constraint_one_contractor_per_job()
 
         self.constraint_complete_all_jobs_for_project_on_time()
+
+        self.constraint_project_not_selected()
 
         self.add_job_contractor_constraints()
 
@@ -289,6 +288,18 @@ class Project:
             for monthjob in monthjoblist:
                 m, j = monthjob
                 add_constraint(p, j, m)
+
+    def constraint_project_not_selected(self):
+        # If a project is not selected none of its jobs should
+        # be done
+        for p in self.project_names:
+            variables = []
+            for m in self.month_names:
+                for j in self.job_names:
+                    for c in self.contractor_names:
+                        variables.append(self.var_pmjc[p][m][j][c])
+            self.model.Add(sum(variables) == 0)                             \
+                    .OnlyEnforceIf(self.var_p[p].Not())
 
     def get_contractor_job_cost(self, c:str, j:str):
         row = self.quote_df[self.quote_df['Contractor'] == c]

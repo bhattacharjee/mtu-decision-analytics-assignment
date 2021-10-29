@@ -3,6 +3,15 @@
 import pandas as pd
 from ortools.sat.python import cp_model
 
+class ProjectSolutionPrinter(cp_model.CpSolverSolutionCallback):
+    def __init__(self):
+        super().__init__()
+        self.solutions = 0
+
+    def OnSolutionCallback(self):
+        self.solutions = self.solutions + 1
+        print(f"Solution # {self.solutions}")
+
 class Project:
 
     def __init__(self, excel_file:str):
@@ -23,6 +32,12 @@ class Project:
 
         self.read_excel(self.excel_file)
         self.create_project_variables_and_constraints()
+
+    def solve(self):
+        solver = cp_model.CpSolver()
+        solution_printer = ProjectSolutionPrinter()
+        status = solver.SearchForAllSolutions(self.model, solution_printer)
+        print(solver.StatusName(status))
 
     def read_excel(self, excelfile:str) -> None:
         self.projects_df = pd.read_excel(excelfile, sheet_name='Projects')
@@ -84,5 +99,6 @@ class Project:
 
 def main():
     prj = Project('Assignment_DA_1_data.xlsx')
+    prj.solve()
 
 main()

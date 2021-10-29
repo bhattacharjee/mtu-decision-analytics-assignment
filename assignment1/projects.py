@@ -17,8 +17,8 @@ class ProjectSolutionPrinter(cp_model.CpSolverSolutionCallback):
 class Project:
 
     def __init__(self, excel_file:str):
-        self.projects_df = None
-        self.quotes_df = None
+        self.project_df = None
+        self.quote_df = None
         self.depend_df = None
         self.value_df = None
         self.project_names = None
@@ -48,28 +48,26 @@ class Project:
         return self.solver, solution_printer.solutions
 
     def read_excel(self, excelfile:str) -> None:
-        self.projects_df = pd.read_excel(excelfile, sheet_name='Projects')
-        self.quotes_df = pd.read_excel(excelfile, sheet_name='Quotes')
+        self.project_df = pd.read_excel(excelfile, sheet_name='Projects')
+        self.quote_df = pd.read_excel(excelfile, sheet_name='Quotes')
         self.depend_df = pd.read_excel(excelfile, sheet_name='Dependencies')
         self.value_df = pd.read_excel(excelfile, sheet_name='Value')
 
-        self.projects_df.rename(columns={'Unnamed: 0':'Project'}, inplace=True)
-        self.quotes_df.rename(columns={'Unnamed: 0':'Contractor'}, inplace=True)
+        self.project_df.rename(columns={'Unnamed: 0':'Project'}, inplace=True)
+        self.quote_df.rename(columns={'Unnamed: 0':'Contractor'}, inplace=True)
         self.depend_df.rename(columns={'Unnamed: 0':'Project'}, inplace=True)
         self.value_df.rename(columns={'Unnamed: 0':'Project'}, inplace=True)
 
-        self.month_names = self.projects_df.columns[1:].tolist()
-        self.job_names = self.quotes_df.columns[1:].tolist()
-        self.project_names = self.projects_df['Project'].tolist()
-        self.contractor_names = self.quotes_df['Contractor'].tolist()
+        self.month_names = self.project_df.columns[1:].tolist()
+        self.job_names = self.quote_df.columns[1:].tolist()
+        self.project_names = self.project_df['Project'].tolist()
+        self.contractor_names = self.quote_df['Contractor'].tolist()
 
 
         print(f"Project Names   : {self.project_names}")
         print(f"Month Names     : {self.month_names}")
         print(f"Job Names       : {self.job_names}")
         print(f"Contractor Names: {self.contractor_names}")
-
-        print(self.depend_df)
 
     def create_project_variables_and_constraints(self):
         # Create a single variable for each project
@@ -100,9 +98,7 @@ class Project:
                     if ('required' == e_p1_p2.lower()):
                         add_required_dependency(p1, p2)
                     if ('conflict' == e_p1_p2.lower()):
-                        add_conflict_dependency(p1, p2)
 
-        print(self.depend_df)
 
     def create_matrix_variables(self):
         # 4-D array of variables: Project, Month, Job, Contractor
@@ -119,10 +115,27 @@ class Project:
                 prj_variables[month] = mnth_variables
             self.varproject[project] = prj_variables
 
+    def get_project_job_month_relationships(self)->dict:
+        # return a hash: project -> [(month, job) ....]
+        ret = {}
+        for prjname in self.project_names:
+            jobmonthlist = []
+            prjrow = self.project_df[self.project_df['Project'] == prjname]
+            for mnth in self.month_names:
+                element = prjrow[mnth].tolist()[0]
+                if (isinstance(element, str)):
+                    jobmonthlist.append((mnth, element,))
+            ret[prjname] = jobmonthlist 
+        print(ret)
+        return ret
+
+
 
 def main():
     prj = Project('Assignment_DA_1_data.xlsx')
-    solver, num_solutions = prj.solve()
-    print(f"{num_solutions} solutions")
+    prj.get_project_job_month_relationships()
+
+    #solver, num_solutions = prj.solve()
+    #print(f"{num_solutions} solutions")
 
 main()

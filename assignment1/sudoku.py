@@ -3,7 +3,7 @@
 from ortools.sat.python import cp_model
 
 def numbers() -> list:
-    return [x for x in range(1,10)]
+    for x in range(1,10): yield x
 
 def row(r:int) -> list:
     return [(r, i) for i in range(9)]
@@ -15,7 +15,8 @@ def square(ind: tuple) -> list:
     return [(i + ind[0], j + ind[1]) for i in range(3) for j in range(3)]
 
 def square_starts() -> list:
-    return [(i, j) for i in range(0,9,3) for j in range(0,9,3)]
+    for i in range(0,9,3):
+        for j in range(0,9,3): yield (i, j)
 
 class SolutionPrinter(cp_model.CpSolverSolutionCallback):
     def __init__(\

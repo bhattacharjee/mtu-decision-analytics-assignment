@@ -68,6 +68,10 @@ class Project:
         print(f"Month Names     : {self.month_names}")
         print(f"Job Names       : {self.job_names}")
         print(f"Contractor Names: {self.contractor_names}")
+        print(f"Project Names   : {len(self.project_names)}")
+        print(f"Month Names     : {len(self.month_names)}")
+        print(f"Job Names       : {len(self.job_names)}")
+        print(f"Contractor Names: {len(self.contractor_names)}")
 
     def create_project_variables_and_constraints(self):
         # Create a single variable for each project
@@ -98,7 +102,7 @@ class Project:
                     if ('required' == e_p1_p2.lower()):
                         add_required_dependency(p1, p2)
                     if ('conflict' == e_p1_p2.lower()):
-
+                        add_conflict_dependency(p1, p2)
 
     def create_matrix_variables(self):
         # 4-D array of variables: Project, Month, Job, Contractor
@@ -126,7 +130,6 @@ class Project:
                 if (isinstance(element, str)):
                     jobmonthlist.append((mnth, element,))
             ret[prjname] = jobmonthlist 
-        print(ret)
         return ret
 
 

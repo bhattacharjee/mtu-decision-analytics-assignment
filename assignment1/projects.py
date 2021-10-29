@@ -29,9 +29,14 @@ class Project:
         # One variable per project to indicate whether it is picked up or not
         self.project_vars = {}
 
+        # 4-D array of variables: Project, Month, Job, Contractor
+        self.matrix_vars = {}
+
 
         self.read_excel(self.excel_file)
         self.create_project_variables_and_constraints()
+
+        self.create_matrix_variables()
 
     def solve(self):
         solver = cp_model.CpSolver()
@@ -95,6 +100,21 @@ class Project:
                         add_conflict_dependency(p1, p2)
 
         print(self.depend_df)
+
+    def create_matrix_variables(self):
+        # 4-D array of variables: Project, Month, Job, Contractor
+        for project in self.project_names:
+            prj_variables = {}
+            for month in self.month_names:
+                mnth_variables = {}
+                for job in self.job_names:
+                    job_variables = {}
+                    for contractor in self.contractor_names:
+                        job_variables[contractor] = self.model.NewBoolVar(  \
+                                f"{project}-{month}-{job}-{contractor}")
+                    mnth_variables[job] = job_variables
+                prj_variables[month] = mnth_variables
+            self.project_vars[project] = prj_variables
 
 
 def main():

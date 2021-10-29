@@ -66,31 +66,22 @@ class Project:
 
         # One variable per project to indicate whether it is picked up or not
         self.var_p = {}
-
         # 4-D dict of variables: Project, Month, Job, Contractor
         self.var_pmjc = {}
 
         self.read_excel(self.excel_file)
 
-        self.create_p_variables()
+        self.crtvars_p()
+        self.crtvars_pmjc()
 
-        self.create_pmjc_variables()
-
-        self.create_constraints_between_projects()
-
-        self.create_pmjc_p_constraints()
-        
-        self.create_constraint_contractor_single_simult_project()
-
-        self.create_constraint_one_contractor_per_job()
-
-        self.create_constraint_complete_all_jobs_for_project()
-
-        self.create_constraint_project_not_selected()
-
-        self.create_constraint_job_contractor()
-
-        self.create_constraint_profit_margin(2160)
+        self.crtcons_project_dependencies_conflicts()
+        self.crtcons_pmjc_p()
+        self.crtcons_contractor_single_simult_project()
+        self.crtcons_one_contractor_per_job()
+        self.crtcons_complete_all_jobs_for_project()
+        self.crtcons_project_not_selected()
+        self.crtcons_job_contractor()
+        self.crtcons_profit_margin(2160)
     
 
     def validate_solution(self, soln:dict)->None:
@@ -198,13 +189,13 @@ class Project:
         print(f"Job Names       : {len(self.job_names)}")
         print(f"Contractor Names: {len(self.contractor_names)}")
 
-    def create_p_variables(self):
+    def crtvars_p(self):
         # Create a single variable for each project
         # Also lookup the dependencies DF and add constraints accordingly
         for p in self.project_names:
             self.var_p[p] = self.model.NewBoolVar(f"{p}")
 
-    def create_constraints_between_projects(self):
+    def crtcons_project_dependencies_conflicts(self):
         def add_required_dependency(p1:str, p2:str)->None:
             # p1 implies p2
             self.model.AddBoolOr(                                           \
@@ -230,7 +221,7 @@ class Project:
                     if ('conflict' == e_p1_p2.lower()):
                         add_conflict_dependency(p1, p2)
 
-    def create_pmjc_variables(self):
+    def crtvars_pmjc(self):
         # 4-D array of variables: Project, Month, Job, Contractor
         for project in self.project_names:
             prj_variables = {}
@@ -245,7 +236,7 @@ class Project:
                 prj_variables[month] = mnth_variables
             self.var_pmjc[project] = prj_variables
 
-    def create_pmjc_p_constraints(self):
+    def crtcons_pmjc_p(self):
         # if an entry in pmjc is True then the corresponding entry in p must
         # also be true
         for p in self.project_names:
@@ -258,7 +249,7 @@ class Project:
                                     self.var_p[p],                          \
                                 ])
 
-    def create_constraint_contractor_single_simult_project(self):
+    def crtcons_contractor_single_simult_project(self):
         # This constraint can be simplified, since a contractor can only do
         # one project at a time, that implies he can only do one job
         # at a time, and vice versa
@@ -285,7 +276,7 @@ class Project:
             ret[prjname] = jobmonthlist 
         return ret
 
-    def create_constraint_complete_all_jobs_for_project(self):
+    def crtcons_complete_all_jobs_for_project(self):
         # If a project is selected, then each job for the project must be
         # done in the month specified
         def add_constraint(p, j, m):
@@ -298,7 +289,7 @@ class Project:
                 m, j = monthjob
                 add_constraint(p, j, m)
 
-    def create_constraint_project_not_selected(self):
+    def crtcons_project_not_selected(self):
         # If a project is not selected none of its jobs should
         # be done
         for p in self.project_names:
@@ -320,7 +311,7 @@ class Project:
         value = row['Value'].tolist()[0]
         return value
 
-    def create_constraint_job_contractor(self)->None:
+    def crtcons_job_contractor(self)->None:
         # Not all contractors can do all jobs
 
         def add_constraint(c:str, j:str):
@@ -338,7 +329,7 @@ class Project:
                 if cannotdo:
                     add_constraint(c, j)
 
-    def create_constraint_profit_margin(self, margin:int)->None:
+    def crtcons_profit_margin(self, margin:int)->None:
         revenue = []
         for p in self.project_names:
             revenue.append(self.get_project_value(p) * self.var_p[p])
@@ -353,7 +344,7 @@ class Project:
                         expenses.append(cost * var)
         self.model.Add(sum(revenue) >= sum(expenses) + margin)
 
-    def create_constraint_one_contractor_per_job(self)->None:
+    def crtcons_one_contractor_per_job(self)->None:
         # Only one contractor per job
 
         def add_constraint(p:str, j:str):

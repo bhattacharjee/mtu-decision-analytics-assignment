@@ -3,6 +3,7 @@
 import pandas as pd
 from ortools.sat.python import cp_model
 import sys
+import math
 
 class ProjectSolutionPrinter(cp_model.CpSolverSolutionCallback):
     def __init__(self):
@@ -39,15 +40,31 @@ class Project:
         self.var_pmc = {}
 
         self.read_excel(self.excel_file)
+
         self.create_project_variables_and_constraints()
 
         self.create_pmjc_variables()
+
         self.create_pmc_variables()
+
         self.create_pmjc_pmc_constraints()
+
+        self.create_pmc_p_constraints()
+
+        self.create_pmjc_p_constraints()
         
         self.constraint_contractor_single_simultaneous_project()
 
+        # TODO: This makes it infeasible for some reason
+        #self.create_constraint_one_contractor_per_job()
+
         self.constraint_complete_all_jobs_for_project_on_time()
+
+        self.add_job_contractor_constraints()
+
+        self.add_profit_margin_constraint(2160)
+    
+
 
 
     def solve(self):
@@ -72,7 +89,7 @@ class Project:
         self.project_names = self.project_df['Project'].tolist()
         self.contractor_names = self.quote_df['Contractor'].tolist()
 
-
+    def print_all_names(self):
         print(f"Project Names   : {self.project_names}")
         print(f"Month Names     : {self.month_names}")
         print(f"Job Names       : {self.job_names}")
@@ -162,6 +179,31 @@ class Project:
                         variables.append(self.var_pmjc[p][m][j][c])
                     self.model.AddBoolOr(variables)
 
+    def create_pmc_p_constraints(self):
+        # If an entry in pmc is True then the corresponding entry in p
+        # must also be true
+        for p in self.project_names:
+            for m in self.month_names:
+                for c in self.contractor_names:
+                    self.model.AddBoolOr(                                   \
+                            [                                               \
+                                self.var_pmc[p][m][c].Not(),                \
+                                self.var_p[p],                              \
+                            ])
+
+    def create_pmjc_p_constraints(self):
+        # if an entry in pmjc is True then the corresponding entry in p must
+        # also be true
+        for p in self.project_names:
+            for m in self.month_names:
+                for c in self.contractor_names:
+                    for j in self.job_names:
+                        self.model.AddBoolOr(                               \
+                                [                                           \
+                                    self.var_pmjc[p][m][j][c].Not(),        \
+                                    self.var_p[p],                          \
+                                ])
+
     def constraint_contractor_single_simultaneous_project(self):
         for m in self.month_names:
             for c in self.contractor_names:
@@ -182,7 +224,7 @@ class Project:
         return ret
 
     def constraint_complete_all_jobs_for_project_on_time(self):
-        # If a job is selected, then each job for the project must be
+        # If a project is selected, then each job for the project must be
         # done in the month specified
         def add_constraint(p, j, m):
             cvars = [self.var_pmjc[p][m][j][c] for c in self.contractor_names]
@@ -194,13 +236,72 @@ class Project:
                 m, j = monthjob
                 add_constraint(p, j, m)
 
+    def get_contractor_job_cost(self, c:str, j:str):
+        row = self.quote_df[self.quote_df['Contractor'] == c]
+        value = row[j].tolist()[0]
+        return value
+
+    def get_project_value(self, p:str):
+        row = self.value_df[self.value_df['Project'] == p]
+        value = row['Value'].tolist()[0]
+        return value
+
+    def add_job_contractor_constraints(self):
+        # Not all contractors can do all jobs
+
+        def add_constraint(c:str, j:str):
+            # Given c, j set to false All p, m
+            variables = []
+            for p in self.project_names:
+                for m in self.month_names:
+                    variables.append(self.var_pmjc[p][m][j][c].Not())
+            self.model.AddBoolAnd(variables)
+
+        for c in self.contractor_names:
+            for j in self.job_names:
+                cost = self.get_contractor_job_cost(c, j)
+                cannotdo = math.isnan(cost)
+                if cannotdo:
+                    add_constraint(c, j)
+
+    def add_profit_margin_constraint(self, margin:int):
+        revenue = []
+        for p in self.project_names:
+            revenue.append(self.get_project_value(p) * self.var_p[p])
+        expenses = []
+        for p in self.project_names:
+            for m in self.month_names:
+                for j in self.job_names:
+                    for c in self.contractor_names:
+                        var = self.var_pmjc[p][m][j][c]
+                        cost = self.get_contractor_job_cost(c, j)
+                        cost = 0 if math.isnan(cost) else int(cost)
+                        expenses.append(cost * var)
+        self.model.Add(sum(revenue) >= sum(expenses) + margin)
+
+    def create_constraint_one_contractor_per_job(self):
+        # Only one contractor per job
+
+        def add_constraint(p:str, j:str):
+            # Only one contractor per job for every project
+            variables = []
+            for c in self.contractor_names:
+                for m in self.month_names:
+                    variables.append(self.var_pmjc[p][m][j][c])
+            self.model.Add(sum(variables) <= 1).OnlyEnforceIf(self.var_p[p])
+
+        rltn = self.get_project_job_month_relationships()
+        for p, monthjobarr in rltn.items():
+            for m, j in monthjobarr:
+                add_constraint(p, j)
+
 
 def main():
     prj = Project('Assignment_DA_1_data.xlsx')
     prj.get_project_job_month_relationships()
 
-    #solver, num_solutions = prj.solve()
-    #print(f"{num_solutions} solutions")
+    solver, num_solutions = prj.solve()
+    print(f"{num_solutions} solutions")
 
 main()
 

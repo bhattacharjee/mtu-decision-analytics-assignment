@@ -6,14 +6,48 @@ import sys
 import math
 
 class ProjectSolutionPrinter(cp_model.CpSolverSolutionCallback):
-    def __init__(self):
+    def __init__(self, project):
         super().__init__()
         self.solutions = 0
+        self.project = project
+
+    def get_contractors(self, p, m, j):
+        pmjc = self.project.var_pmjc
+        cnames = self.project.contractor_names
+        variables = []
+        for c in cnames:
+            if self.Value(pmjc[p][m][j][c]):
+                variables.append(c)
+        return variables
 
     def OnSolutionCallback(self):
         self.solutions = self.solutions + 1
+        """
         sys.stdout.write('.')
         sys.stdout.flush()
+        """
+        print(f"Solution # {self.solutions}")
+        chosen_projects = [p for p in self.project.project_names if         \
+                                self.Value(self.project.var_p[p])]
+
+        solution = {}
+        for p in chosen_projects:
+            solution[p] = []
+            rltn = self.project.get_project_job_month_relationships()
+            for m, j in rltn[p]:
+                c = self.get_contractors(p, m, j)
+                if 1 != len(c):
+                    print(f"problem in OnSolutionCallback, #cont = {len(c)}")
+                    assert(False)
+                solution[p].append((m, j, c[0]))
+        for p, mjclist in soln.items():
+            print(p, mjclist)
+        profit = self.project.validate_and_get_profit(solution)
+        print()
+        print()
+
+
+
 
 class Project:
 
@@ -41,22 +75,23 @@ class Project:
 
         self.read_excel(self.excel_file)
 
-        self.create_project_variables_and_constraints()
-
+        self.create_p_variables()
         self.create_pmjc_variables()
-
         self.create_pmc_variables()
+
+        self.create_constraints_between_projects()
 
         self.create_pmjc_pmc_constraints()
 
-        self.create_pmc_p_constraints()
+        # TODO: This seems to create problems
+        # self.create_pmc_p_constraints()
 
         self.create_pmjc_p_constraints()
         
         self.constraint_contractor_single_simultaneous_project()
 
         # TODO: This makes it infeasible for some reason
-        #self.create_constraint_one_contractor_per_job()
+        # self.create_constraint_one_contractor_per_job()
 
         self.constraint_complete_all_jobs_for_project_on_time()
 
@@ -65,10 +100,32 @@ class Project:
         self.add_profit_margin_constraint(2160)
     
 
+    def validate_solution(self, soln:dict)->int:
+        # solution is a dictionary
+        # project -> [(m, j, c), ...]
+        projects = set(soln.keys())
+        contractors = set()
+        months = set()
+        jobs = set()
+        for p, mjclist in soln.items():
+            for m, j, c in mjclist:
+                contractors.add(c)
+                months.add(m)
+                jobs.add(j)
+                
+                # The contractor should be capable of doing the job
+                cjcost = self.get_contractor_job_cost(c, j)
+                if math.isnan(cjcost):
+                    print("infeasible {cjcost}: {c} cannot do {j}")
+        return 0
+
+    def validate_and_get_profit(self, soln:dict)->int:
+        self.validate_solution(soln)
+        return 0
 
 
     def solve(self):
-        solution_printer = ProjectSolutionPrinter()
+        solution_printer = ProjectSolutionPrinter(self)
         status = self.solver.SearchForAllSolutions(self.model, solution_printer)
         print(self.solver.StatusName(status))
         return self.solver, solution_printer.solutions
@@ -99,12 +156,13 @@ class Project:
         print(f"Job Names       : {len(self.job_names)}")
         print(f"Contractor Names: {len(self.contractor_names)}")
 
-    def create_project_variables_and_constraints(self):
+    def create_p_variables(self):
         # Create a single variable for each project
         # Also lookup the dependencies DF and add constraints accordingly
         for p in self.project_names:
             self.var_p[p] = self.model.NewBoolVar(f"{p}")
 
+    def create_constraints_between_projects(self):
         def add_required_dependency(p1:str, p2:str)->None:
             # p1 implies p2
             self.model.AddBoolOr(                                           \
@@ -174,10 +232,12 @@ class Project:
         for p in self.project_names:
             for m in self.month_names:
                 for c in self.contractor_names:
-                    variables = [self.var_pmc[p][m][c].Not()]
+                    #variables = [self.var_pmc[p][m][c].Not()]
+                    variables = []
                     for j in self.job_names:
                         variables.append(self.var_pmjc[p][m][j][c])
-                    self.model.AddBoolOr(variables)
+                    self.model.AddBoolOr(variables)                         \
+                            .OnlyEnforceIf(self.var_pmc[p][m][c])
 
     def create_pmc_p_constraints(self):
         # If an entry in pmc is True then the corresponding entry in p
@@ -190,6 +250,18 @@ class Project:
                                 self.var_pmc[p][m][c].Not(),                \
                                 self.var_p[p],                              \
                             ])
+        # if an entry in p is true, then the count in pmc must match
+        # Since no job is repeated in any project, we can take advantae of this
+        # and simplify the constraints
+        for p, mjlist in self.get_project_job_month_relationships().items():
+            njobs = len(mjlist)
+            variables = []
+            for j in self.job_names:
+                for m in self.month_names:
+                    for c in self.contractor_names:
+                        variables.append(self.var_pmjc[p][m][j][c])
+            self.model.Add(sum(variables) == njobs)
+
 
     def create_pmjc_p_constraints(self):
         # if an entry in pmjc is True then the corresponding entry in p must

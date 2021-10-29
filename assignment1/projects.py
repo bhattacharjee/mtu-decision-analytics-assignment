@@ -184,11 +184,52 @@ class Project:
     def constraint_complete_all_jobs_for_project_on_time(self):
         # If a job is selected, then each job for the project must be
         # done in the month specified
+        def add_constraint(p, j, m):
+            cvars = [self.var_pmjc[p][m][j][c] for c in self.contractor_names]
+            self.model.Add(sum(cvars) == 1).OnlyEnforceIf(self.var_p[p])
+
         rltn = self.get_project_job_month_relationships()
-        for project, jobmonth in rltn.items():
-            print(project, jobmonth)
-        pass
-    """
+        for p, monthjoblist in rltn.items():
+            for monthjob in monthjoblist:
+                m, j = monthjob
+                add_constraint(p, j, m)
+
+
+def main():
+    prj = Project('Assignment_DA_1_data.xlsx')
+    prj.get_project_job_month_relationships()
+
+    #solver, num_solutions = prj.solve()
+    #print(f"{num_solutions} solutions")
+
+main()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"""
     def constraint_contractor_single_simultaneous_project(self):
         def get_job_vars(prj:str, cntr:str, mnth:str)->list:
             return [self.var_pmjc[prj][mnth][j][cntr] for j in self.job_names]
@@ -213,14 +254,4 @@ class Project:
                         vars1 = get_job_vars(prj1, cntr, mnth)
                         vars2 = get_job_vars(prj2, cntr, mnth)
                         add_constraints(vars1, vars2)
-    """
-
-
-def main():
-    prj = Project('Assignment_DA_1_data.xlsx')
-    prj.get_project_job_month_relationships()
-
-    #solver, num_solutions = prj.solve()
-    #print(f"{num_solutions} solutions")
-
-main()
+"""

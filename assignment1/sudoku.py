@@ -18,7 +18,7 @@ def square_starts() -> list:
     for i in range(0,9,3):
         for j in range(0,9,3): yield (i, j)
 
-class SolutionPrinter(cp_model.CpSolverSolutionCallback):
+class SudokuSolutionPrinter(cp_model.CpSolverSolutionCallback):
     def __init__(\
             self,
             sudoku:dict):
@@ -172,7 +172,7 @@ def main():
     set_explicit_constraints(model, sudoku)
 
     solver = cp_model.CpSolver()
-    solution_printer = SolutionPrinter(sudoku)
+    solution_printer = SudokuSolutionPrinter(sudoku)
     status = solver.SearchForAllSolutions(model, solution_printer)
     print(solver.StatusName(status))
 

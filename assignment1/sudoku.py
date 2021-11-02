@@ -66,7 +66,7 @@ class SudokuSolutionPrinter(cp_model.CpSolverSolutionCallback):
 
         print(f"Solution # {self.solutions}")
         print("++=======++===+===+===+===+===+===+===+===+===++")
-        print("||   #   || 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 ||")
+        print("||   #   ||-0-|-1-|-2-|-3-|-4-|-5-|-6-|-7 |-8-||")
         print("++=======++===+===+===+===+===+===+===+===+===++")
 
         for i in range(9):
@@ -75,13 +75,19 @@ class SudokuSolutionPrinter(cp_model.CpSolverSolutionCallback):
             for j in range(9):
                 for k in numbers():
                     if self.Value(self.sudoku[i][j][k]):
-                        addstr = f" || {k}" if first else f" | {k}"
+                        if j % 3 == 0:
+                            addstr = f" || {k}" if first else f" | {k}"
+                        else:
+                            addstr = f" || {k}" if first else f" . {k}"
                         first = False
                         output_line = output_line + addstr
                         break
             output_line = output_line + f" ||"
             print(output_line)
-            print("++-------++---+---+---+---+---+---+---+---+---++")
+            if (i + 1) % 3 == 0:
+                print("++-------++-----------+-----------+-----------++")
+            else:
+                print("++............................................++")
 
         print()
         print()

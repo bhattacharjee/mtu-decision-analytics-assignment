@@ -149,6 +149,15 @@ def set_explicit_constraints(model, sudoku:dict):
         for c, n in val.items():
             model.AddBoolAnd([sudoku[r][c][n]])
 
+    for i in range(9):
+        outstr = ""
+        for j in range(9):
+            try:
+                outstr = outstr + str(explicit_constraints[i][j]) + " "
+            except:
+                outstr = outstr + '. '
+        print(outstr)
+
 
 def main():
     model = cp_model.CpModel()

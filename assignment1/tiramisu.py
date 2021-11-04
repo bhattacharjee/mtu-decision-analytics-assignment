@@ -34,6 +34,13 @@ class TiramisuSolutionPrinter(cp_model.CpSolverSolutionCallback):
         self.solutions = 0
 
     def validate_matrix(self, matrix:dict, axis1:list, axis2:list):
+        """[summary]
+
+        Args:
+            matrix (dict): [description]
+            axis1 (list): [description]
+            axis2 (list): [description]
+        """
         for v1 in axis1:
             i = 0
             for v2 in axis2:
@@ -76,6 +83,16 @@ def create_variables_and_implicit_constraints(
         model,
         var_list1:list,
         var_list2: list) -> dict:
+    """[summary]
+
+    Args:
+        model ([type]): [description]
+        var_list1 (list): [description]
+        var_list2 (list): [description]
+
+    Returns:
+        dict: [description]
+    """
 
     # Create the variables
     ret_dict = {}
@@ -294,6 +311,7 @@ def main():
                 person_dessert["Daniel"]["Ice_Cream"].Not(),                \
                 person_drink["Daniel"]["Coke"].Not()                        \
             ])
+
     solver = cp_model.CpSolver()
     status = solver.SearchForAllSolutions(model, solution_printer)
     print(solver.StatusName(status))

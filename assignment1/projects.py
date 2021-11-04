@@ -50,8 +50,15 @@ class ProjectSolutionPrinter(cp_model.CpSolverSolutionCallback):
 
 
 class Project:
+    """[summary]
+    """
 
     def __init__(self, excel_file:str):
+        """[summary]
+
+        Args:
+            excel_file (str): [description]
+        """
         self.project_df = None
         self.quote_df = None
         self.depend_df = None
@@ -85,6 +92,11 @@ class Project:
     
 
     def validate_solution(self, soln:dict)->None:
+        """[summary]
+
+        Args:
+            soln (dict): [description]
+        """
         # solution is a dictionary
         # project -> [(m, j, c), ...]
         projects = set(soln.keys())
@@ -143,6 +155,14 @@ class Project:
                 assert(False)
 
     def get_profit(self, soln:dict)->int:
+        """[summary]
+
+        Args:
+            soln (dict): [description]
+
+        Returns:
+            int: [description]
+        """
         # solution is a dictionary
         # project -> [(m, j, c), ...]
         profit = 0
@@ -153,17 +173,35 @@ class Project:
         return profit
 
     def validate_and_get_profit(self, soln:dict)->int:
+        """[summary]
+
+        Args:
+            soln (dict): [description]
+
+        Returns:
+            int: [description]
+        """
         self.validate_solution(soln)
         return self.get_profit(soln)
 
 
     def solve(self):
+        """[summary]
+
+        Returns:
+            [type]: [description]
+        """
         solution_printer = ProjectSolutionPrinter(self)
         status = self.solver.SearchForAllSolutions(self.model, solution_printer)
         print(self.solver.StatusName(status))
         return self.solver, solution_printer.solutions
 
     def read_excel(self, excelfile:str) -> None:
+        """[summary]
+
+        Args:
+            excelfile (str): [description]
+        """
         self.project_df = pd.read_excel(excelfile, sheet_name='Projects')
         self.quote_df = pd.read_excel(excelfile, sheet_name='Quotes')
         self.depend_df = pd.read_excel(excelfile, sheet_name='Dependencies')
@@ -180,6 +218,8 @@ class Project:
         self.contractor_names = self.quote_df['Contractor'].tolist()
 
     def print_all_names(self):
+        """[summary]
+        """
         print(f"Project Names   : {self.project_names}")
         print(f"Month Names     : {self.month_names}")
         print(f"Job Names       : {self.job_names}")
@@ -190,12 +230,16 @@ class Project:
         print(f"Contractor Names: {len(self.contractor_names)}")
 
     def crtvars_p(self):
+        """[summary]
+        """
         # Create a single variable for each project
         # Also lookup the dependencies DF and add constraints accordingly
         for p in self.project_names:
             self.var_p[p] = self.model.NewBoolVar(f"{p}")
 
     def crtcons_project_dependencies_conflicts(self):
+        """[summary]
+        """
         def add_required_dependency(p1:str, p2:str)->None:
             # p1 implies p2
             self.model.AddBoolOr(                                           \
@@ -222,6 +266,8 @@ class Project:
                         add_conflict_dependency(p1, p2)
 
     def crtvars_pmjc(self):
+        """[summary]
+        """
         # 4-D array of variables: Project, Month, Job, Contractor
         for project in self.project_names:
             prj_variables = {}
@@ -237,6 +283,8 @@ class Project:
             self.var_pmjc[project] = prj_variables
 
     def crtcons_pmjc_p(self):
+        """[summary]
+        """
         # if an entry in pmjc is True then the corresponding entry in p must
         # also be true
         for p in self.project_names:
@@ -250,6 +298,8 @@ class Project:
                                 ])
 
     def crtcons_contractor_single_simult_project(self):
+        """[summary]
+        """
         # This constraint can be simplified, since a contractor can only do
         # one project at a time, that implies he can only do one job
         # at a time, and vice versa
@@ -264,6 +314,11 @@ class Project:
                 self.model.Add(sum(variables) <= 1)
 
     def get_project_job_month_relationships(self)->dict:
+        """[summary]
+
+        Returns:
+            dict: [description]
+        """
         # return a hash: project -> [(month, job) ....]
         ret = {}
         for prjname in self.project_names:
@@ -277,6 +332,8 @@ class Project:
         return ret
 
     def crtcons_complete_all_jobs_for_project(self):
+        """[summary]
+        """
         # If a project is selected, then each job for the project must be
         # done in the month specified
         def add_constraint(p, j, m):
@@ -290,6 +347,8 @@ class Project:
                 add_constraint(p, j, m)
 
     def crtcons_project_not_selected(self):
+        """[summary]
+        """
         # If a project is not selected none of its jobs should
         # be done
         for p in self.project_names:
@@ -302,19 +361,44 @@ class Project:
                     .OnlyEnforceIf(self.var_p[p].Not())
 
     def get_contractor_job_cost(self, c:str, j:str)->float:
+        """[summary]
+
+        Args:
+            c (str): [description]
+            j (str): [description]
+
+        Returns:
+            float: [description]
+        """
         row = self.quote_df[self.quote_df['Contractor'] == c]
         value = row[j].tolist()[0]
         return value
 
     def get_project_value(self, p:str)->int:
+        """[summary]
+
+        Args:
+            p (str): [description]
+
+        Returns:
+            int: [description]
+        """
         row = self.value_df[self.value_df['Project'] == p]
         value = row['Value'].tolist()[0]
         return value
 
     def crtcons_job_contractor(self)->None:
+        """[summary]
+        """
         # Not all contractors can do all jobs
 
         def add_constraint(c:str, j:str):
+            """[summary]
+
+            Args:
+                c (str): [description]
+                j (str): [description]
+            """
             # Given c, j set to false All p, m
             variables = []
             for p in self.project_names:
@@ -330,6 +414,11 @@ class Project:
                     add_constraint(c, j)
 
     def crtcons_profit_margin(self, margin:int)->None:
+        """[summary]
+
+        Args:
+            margin (int): [description]
+        """
         revenue = []
         for p in self.project_names:
             revenue.append(self.get_project_value(p) * self.var_p[p])
@@ -345,6 +434,8 @@ class Project:
         self.model.Add(sum(revenue) >= sum(expenses) + margin)
 
     def crtcons_one_contractor_per_job(self)->None:
+        """[summary]
+        """
         # Only one contractor per job
 
         def add_constraint(p:str, j:str):

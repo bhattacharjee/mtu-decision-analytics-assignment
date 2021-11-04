@@ -3,22 +3,64 @@
 from ortools.sat.python import cp_model
 
 def numbers() -> range:
+    """[summary]
+
+    Returns:
+        range: [description]
+    """
     return range(1,10)
 
 def row(r:int) -> list:
+    """[summary]
+
+    Args:
+        r (int): [description]
+
+    Returns:
+        list: [description]
+    """
     return [(r, i) for i in range(9)]
 
 def column(c:int) -> list:
+    """[summary]
+
+    Args:
+        c (int): [description]
+
+    Returns:
+        list: [description]
+    """
     return [(i, c) for i in range(9)]
 
 def square(ind: tuple) -> list:
+    """[summary]
+
+    Args:
+        ind (tuple): [description]
+
+    Returns:
+        list: [description]
+    """
     return [(i + ind[0], j + ind[1]) for i in range(3) for j in range(3)]
 
 def square_starts() -> list:
+    """[summary]
+
+    Returns:
+        list: [description]
+
+    Yields:
+        Iterator[list]: [description]
+    """
     for i in range(0,9,3):
         for j in range(0,9,3): yield (i, j)
 
 class SudokuSolutionPrinter(cp_model.CpSolverSolutionCallback):
+    """[summary]
+
+    Args:
+        cp_model ([type]): [description]
+    """
     def __init__(\
             self,
             sudoku:dict):
@@ -27,6 +69,11 @@ class SudokuSolutionPrinter(cp_model.CpSolverSolutionCallback):
         self.solutions = 0
 
     def validate_all_numbers_present(self, indices:dict):
+        """[summary]
+
+        Args:
+            indices (dict): [description]
+        """
         s = set()
         count = 0
 
@@ -43,6 +90,12 @@ class SudokuSolutionPrinter(cp_model.CpSolverSolutionCallback):
         assert(9 == len(s) and 9 == count)
 
     def validate_cell(self, i, j):
+        """[summary]
+
+        Args:
+            i ([type]): [description]
+            j ([type]): [description]
+        """
         # Each cell should have exactly one number
         count = 0
         for k in numbers():
@@ -51,6 +104,8 @@ class SudokuSolutionPrinter(cp_model.CpSolverSolutionCallback):
         assert(count == 1)
 
     def validate_solution(self):
+        """[summary]
+        """
         [self.validate_cell(i, j) for i in range(9) for j in range(9)]
 
         [self.validate_all_numbers_present(row(i)) for i in range(9)]
@@ -94,6 +149,14 @@ class SudokuSolutionPrinter(cp_model.CpSolverSolutionCallback):
 
 
 def create_variables(model) -> dict:
+    """[summary]
+
+    Args:
+        model ([type]): [description]
+
+    Returns:
+        dict: [description]
+    """
     def get_inner_dict(i, j):
         return {k: model.NewBoolVar(f"--[{i},{j}]->{k}--") for k in numbers()}
 
@@ -104,12 +167,25 @@ def create_variables(model) -> dict:
 
 
 def set_constraint_one_number_per_cell(model, sudoku:dict):
+    """[summary]
+
+    Args:
+        model ([type]): [description]
+        sudoku (dict): [description]
+    """
     for r in range(9):
         for c in range(9):
             model.AddBoolOr([sudoku[r][c][n] for n in numbers()])
 
 
 def set_constraint_no_duplicates(model, sudoku:dict, indices):
+    """[summary]
+
+    Args:
+        model ([type]): [description]
+        sudoku (dict): [description]
+        indices ([type]): [description]
+    """
     def update(model, sudoku, i, j, n):
         r1, c1 = indices[i]
         r2, c2 = indices[j]
@@ -127,11 +203,24 @@ def set_constraint_no_duplicates(model, sudoku:dict, indices):
 
 
 def set_constraint_all_numbers_present(model, sudoku:dict, indices):
+    """[summary]
+
+    Args:
+        model ([type]): [description]
+        sudoku (dict): [description]
+        indices ([type]): [description]
+    """
     for n in numbers():
         model.AddBoolOr([sudoku[r][c][n] for r, c in indices])
 
 
 def set_explicit_constraints(model, sudoku:dict):
+    """[summary]
+
+    Args:
+        model ([type]): [description]
+        sudoku (dict): [description]
+    """
     explicit_constraints = \
     {
         0: {7: 3},

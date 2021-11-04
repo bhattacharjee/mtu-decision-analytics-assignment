@@ -12,6 +12,16 @@ class ProjectSolutionPrinter(cp_model.CpSolverSolutionCallback):
         self.project = project
 
     def get_contractors(self, p, m, j):
+        """[summary]
+
+        Args:
+            p ([type]): [description]
+            m ([type]): [description]
+            j ([type]): [description]
+
+        Returns:
+            [type]: [description]
+        """
         pmjc = self.project.var_pmjc
         cnames = self.project.contractor_names
         variables = []

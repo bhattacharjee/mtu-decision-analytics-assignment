@@ -8,6 +8,11 @@ MAINCOURSE = ["Baked_Mackerel", "Fried_Chicken", "Filet_Steak", "Vegan_Pie"]
 DRINK = ["Red_Wine", "Beer", "White_Wine", "Coke"]
 DESSERT = ["Apple_Crumble", "Ice_Cream", "Chocolate_Cake", "Tiramisu"]
 
+CONSTRAINT3_INTERPRETATION_1 = True
+CONSTRAINT3_INTERPRETATION_2 = False 
+CONSTRAINT3_INTERPRETATION_3 = False
+
+CONSTRAINT9_INTERPRETATION_2 = True
 
 class TiramisuSolutionPrinter(cp_model.CpSolverSolutionCallback):
     def __init__(\
@@ -184,13 +189,42 @@ def main():
     # Sophie will only have fried chicken as main course
     # if she does not have to take the prawn cocktail as starter
     #
+    # Interpretation 1:
     # Or in other words Fried Chicken implies No Prawn Cocktail
-    model.AddBoolOr(                                                        \
-                [                                                           \
-                    person_starter["Sophie"]["Prawn_Cocktail"].Not(),       \
-                    person_maincourse["Sophie"]["Fried_Chicken"].Not()      \
-                ]                                                           \
-            )
+    #
+    # Interpretation 2:
+    # Another way to interpret this condition is to say that Sophie has
+    # either Prawn Cocktail or Fried Chicken, a xor condition.
+    #
+    # Interpretation 3:
+    # A third way to interpret this condition is to say that
+    # if she does not have prawn cocktail, she will definitely have fried
+    # chicken
+    # Or in other words, Not Prawn Cocktail implies Fried Chicken
+    # 
+    # 
+    if CONSTRAINT3_INTERPRETATION_1:
+        model.AddBoolOr(                                                    \
+                    [                                                       \
+                        person_starter["Sophie"]["Prawn_Cocktail"].Not(),   \
+                        person_maincourse["Sophie"]["Fried_Chicken"].Not()  \
+                    ]                                                       \
+                )
+    elif CONSTRAINT3_INTERPRETATION_2:
+        model.AddBoolXOr(                                                   \
+                    [                                                       \
+                        person_starter["Sophie"]["Prawn_Cocktail"],         \
+                        person_maincourse["Sophie"]["Fried_Chicken"]        \
+                    ]                                                       \
+                )
+    elif CONSTRAINT3_INTERPRETATION_3:
+        model.AddBoolOr(                                                    \
+                    [                                                       \
+                        person_maincourse["Sophie"]["Fried_Chicken"]        \
+                    ]                                                       \
+                ).OnlyEnforceIf(person_starter["Sophie"]["Prawn_Cocktail"])
+    else:
+        raise Exception('At least one interpretation of constraint 3 must hold')
     # ---------------------
 
     # Explicit constraint 4
@@ -318,17 +352,17 @@ def main():
     # then we get only 1 solution, if they are discarded, we get multiple
     #
     # The man who has the chocolate cake doesn't have ice cream or coke
-    model.AddBoolAnd(                                                       \
-            [                                                               \
-                person_dessert["James"]["Ice_Cream"].Not(),                 \
-                person_drink["James"]["Coke"].Not()                         \
-            ]).OnlyEnforceIf(person_dessert["James"]["Chocolate_Cake"])
-    model.AddBoolAnd(                                                       \
-            [                                                               \
-                person_dessert["Daniel"]["Ice_Cream"].Not(),                \
-                person_drink["Daniel"]["Coke"].Not()                        \
-            ]).OnlyEnforceIf(person_dessert["Daniel"]["Chocolate_Cake"])
-
+    if CONSTRAINT9_INTERPRETATION_2:
+        model.AddBoolAnd(                                                   \
+                [                                                           \
+                    person_dessert["James"]["Ice_Cream"].Not(),             \
+                    person_drink["James"]["Coke"].Not()                     \
+                ]).OnlyEnforceIf(person_dessert["James"]["Chocolate_Cake"])
+        model.AddBoolAnd(                                                   \
+                [                                                           \
+                    person_dessert["Daniel"]["Ice_Cream"].Not(),            \
+                    person_drink["Daniel"]["Coke"].Not()                    \
+                ]).OnlyEnforceIf(person_dessert["Daniel"]["Chocolate_Cake"])
 
     solver = cp_model.CpSolver()
     status = solver.SearchForAllSolutions(model, solution_printer)

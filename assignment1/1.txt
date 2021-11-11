@@ -1,0 +1,25 @@
+Solution #000001
+----------------
+- James
+     - Apple_Crumble
+     - Coke
+     - Onion_Soup
+     - Filet_Steak
+- Daniel
+     - Chocolate_Cake
+     - Beer
+     - Prawn_Cocktail
+     - Fried_Chicken
+- Emily
+     - Ice_Cream
+     - Red_Wine
+     - Mushroom_Tart
+     - Vegan_Pie
+- Sophie
+     - Tiramisu
+     - White_Wine
+     - Carpaccio
+     - Baked_Mackerel
+
+
+OPTIMAL

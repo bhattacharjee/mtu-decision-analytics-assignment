@@ -316,6 +316,8 @@ def main():
     # The problem statement doesn't say so, but probably the two conditions
     # below are implicit. If the two conditions below are added,
     # then we get only 1 solution, if they are discarded, we get multiple
+    #
+    # The man who has the chocolate cake doesn't have ice cream or coke
     model.AddBoolAnd(                                                       \
             [                                                               \
                 person_dessert["James"]["Ice_Cream"].Not(),                 \

@@ -349,7 +349,9 @@ def main():
 
     # The problem statement doesn't say so, but probably the two conditions
     # below are implicit. If the two conditions below are added,
-    # then we get only 1 solution, if they are discarded, we get multiple
+    # then we get only 1 solution. 
+    #
+    # If they are discarded, we get multiple
     # solutions, which satisfy all other criteria, except that the same man
     # has both chocolate cake and coke.
     #

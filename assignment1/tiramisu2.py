@@ -219,7 +219,7 @@ def main():
                     ]                                                       \
                 )
     elif CONSTRAINT3_INTERPRETATION_3:
-        model.AddBoolAnd(                                                    \
+        model.AddBoolAnd(                                                   \
                     [                                                       \
                         person_maincourse["Sophie"]["Fried_Chicken"]        \
                     ]                                                       \

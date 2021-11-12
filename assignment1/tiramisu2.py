@@ -14,6 +14,7 @@ CONSTRAINT3_INTERPRETATION_3 = False
 
 CONSTRAINT9_INTERPRETATION_2 = True
 
+
 class TiramisuSolutionPrinter(cp_model.CpSolverSolutionCallback):
     def __init__(\
             self,
@@ -190,7 +191,7 @@ def main():
     # if she does not have to take the prawn cocktail as starter
     #
     # Interpretation 1:
-    # Or in other words Fried Chicken implies No Prawn Cocktail
+    # Or in other words Fried Chicken implies No Prawn Cocktail, and vice versa
     #
     # Interpretation 2:
     # Another way to interpret this condition is to say that Sophie has
@@ -218,11 +219,11 @@ def main():
                     ]                                                       \
                 )
     elif CONSTRAINT3_INTERPRETATION_3:
-        model.AddBoolOr(                                                    \
+        model.AddBoolAnd(                                                    \
                     [                                                       \
                         person_maincourse["Sophie"]["Fried_Chicken"]        \
                     ]                                                       \
-                ).OnlyEnforceIf(person_starter["Sophie"]["Prawn_Cocktail"])
+                ).OnlyEnforceIf(person_starter["Sophie"]["Prawn_Cocktail"].Not())
     else:
         raise Exception('At least one interpretation of constraint 3 must hold')
     # ---------------------
@@ -337,30 +338,31 @@ def main():
             ])
     model.AddBoolOr(                                                        \
             [                                                               \
-                person_dessert["Daniel"]["Chocolate_Cake"].Not(),           \
                 person_dessert["James"]["Ice_Cream"].Not(),                 \
                 person_drink["James"]["Coke"].Not()                         \
-            ])
+            ]).OnlyEnforceIf(person_dessert["Daniel"]["Chocolate_Cake"])
     model.AddBoolOr(                                                        \
             [                                                               \
-                person_dessert["James"]["Chocolate_Cake"].Not(),            \
                 person_dessert["Daniel"]["Ice_Cream"].Not(),                \
                 person_drink["Daniel"]["Coke"].Not()                        \
-            ])
+            ]).OnlyEnforceIf(person_dessert["James"]["Chocolate_Cake"])
+
     # The problem statement doesn't say so, but probably the two conditions
     # below are implicit. If the two conditions below are added,
     # then we get only 1 solution, if they are discarded, we get multiple
+    # solutions, which satisfy all other criteria, except that the same man
+    # has both chocolate cake and coke.
     #
     # The man who has the chocolate cake doesn't have ice cream or coke
+    # Since there is already one condition that someone cannot have two
+    # desserts, we only need to cover for coke
     if CONSTRAINT9_INTERPRETATION_2:
         model.AddBoolAnd(                                                   \
                 [                                                           \
-                    person_dessert["James"]["Ice_Cream"].Not(),             \
                     person_drink["James"]["Coke"].Not()                     \
                 ]).OnlyEnforceIf(person_dessert["James"]["Chocolate_Cake"])
         model.AddBoolAnd(                                                   \
                 [                                                           \
-                    person_dessert["Daniel"]["Ice_Cream"].Not(),            \
                     person_drink["Daniel"]["Coke"].Not()                    \
                 ]).OnlyEnforceIf(person_dessert["Daniel"]["Chocolate_Cake"])
 

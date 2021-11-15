@@ -135,7 +135,11 @@ class Project:
     
 
     def validate_solution(self, soln:dict)->None:
-        """[summary]
+        """Validate that the solution is correct by running through
+           all the constraints.
+           This is really for debugging purposes
+
+           Asserts if invalid
 
         Args:
             soln (dict): [description]
@@ -198,13 +202,14 @@ class Project:
                 assert(False)
 
     def get_profit(self, soln:dict)->int:
-        """[summary]
+        """get the profit
 
         Args:
             soln (dict): [description]
 
         Returns:
-            int: [description]
+            int: profit - difference between value of all projects and
+                 the cost of all sub-contractors
         """
         # solution is a dictionary
         # project -> [(m, j, c), ...]
@@ -216,20 +221,23 @@ class Project:
         return profit
 
     def validate_and_get_profit(self, soln:dict)->int:
-        """[summary]
+        """Validate that the solution is correct, by running all the constraints
+           If the solution is not valid, then an exception is raised
+           Return the profit if valid
 
         Args:
             soln (dict): [description]
 
         Returns:
-            int: [description]
+            int: profit - difference between value of all projects and
+                 the cost of all sub-contractors
         """
         self.validate_solution(soln)
         return self.get_profit(soln)
 
 
     def solve(self):
-        """[summary]
+        """Solve the model
 
         Returns:
             [type]: [description]
@@ -241,16 +249,18 @@ class Project:
 
     # PART A: Read the Excel
     def read_excel(self, excelfile:str) -> None:
-        """[summary]
+        """Read an excel file and create dataframes for each sheet
 
         Args:
-            excelfile (str): [description]
+            excelfile (str): path to excel file
         """
+        # Load the excel with all the sheets
         self.project_df = pd.read_excel(excelfile, sheet_name='Projects')
         self.quote_df = pd.read_excel(excelfile, sheet_name='Quotes')
         self.depend_df = pd.read_excel(excelfile, sheet_name='Dependencies')
         self.value_df = pd.read_excel(excelfile, sheet_name='Value')
 
+        # Rename the columns
         self.project_df.rename(columns={'Unnamed: 0':'Project'}, inplace=True)
         self.quote_df.rename(columns={'Unnamed: 0':'Contractor'}, inplace=True)
         self.depend_df.rename(columns={'Unnamed: 0':'Project'}, inplace=True)
@@ -262,7 +272,7 @@ class Project:
         self.contractor_names = self.quote_df['Contractor'].tolist()
 
     def print_all_names(self):
-        """[summary]
+        """Pront all the parameters
         """
         print(f"Project Names   : {self.project_names}")
         print(f"Month Names     : {self.month_names}")

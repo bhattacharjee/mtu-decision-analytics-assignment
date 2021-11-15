@@ -140,7 +140,7 @@ class SudokuSolutionPrinter(cp_model.CpSolverSolutionCallback):
             output_line = output_line + f" ||"
             print(output_line)
             if (i + 1) % 3 == 0:
-                print("++-------++-----------+-----------+-----------++")
+                print("++*******++***********+***********+***********++")
             else:
                 print("++............................................++")
 
@@ -248,7 +248,7 @@ def set_explicit_constraints(model, sudoku:dict):
         print(outstr)
 
 
-def main():
+def sudoku_main():
     model = cp_model.CpModel()
 
     sudoku = create_variables(model)
@@ -282,4 +282,4 @@ def main():
 
 
 if "__main__" == __name__:
-    main()
+    sudoku_main()

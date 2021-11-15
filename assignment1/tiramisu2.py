@@ -139,7 +139,7 @@ def create_variables_and_implicit_constraints(
     return ret_dict
 
 
-def main():
+def tiramisu_main():
     model = cp_model.CpModel()
 
     person_starter = create_variables_and_implicit_constraints(             \
@@ -397,4 +397,4 @@ def main():
     print(solver.StatusName(status))
 
 if "__main__" == __name__:
-    main()
+    tiramisu_main()

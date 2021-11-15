@@ -592,7 +592,7 @@ class Project:
                 add_constraint(p, j)
 
 
-def main():
+def projects_main():
     prj = Project('Assignment_DA_1_data.xlsx')
     print("Created all variables, calling solver...")
 
@@ -600,4 +600,4 @@ def main():
     solver, num_solutions = prj.solve()
     print(f"{num_solutions} solutions")
 
-main()
+projects_main()

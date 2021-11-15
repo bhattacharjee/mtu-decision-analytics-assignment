@@ -30,6 +30,7 @@ class ProjectSolutionPrinter(cp_model.CpSolverSolutionCallback):
                 variables.append(c)
         return variables
 
+    # PART H: Print the solution
     def OnSolutionCallback(self):
         self.solutions = self.solutions + 1
         print(f"Solution # {self.solutions:02d}")
@@ -50,6 +51,7 @@ class ProjectSolutionPrinter(cp_model.CpSolverSolutionCallback):
         for p in sorted(solution.keys()):
             mjclist = solution[p]
             print(p, mjclist)
+        # Part H: Get the profit
         profit = self.project.validate_and_get_profit(solution)
         print('-------------')
         print(f"Profit = {profit}")
@@ -201,6 +203,7 @@ class Project:
                 print(f"count = {count} for {k}")
                 assert(False)
 
+    # PART H: Get the profit
     def get_profit(self, soln:dict)->int:
         """get the profit
 
@@ -220,6 +223,7 @@ class Project:
                 profit = profit - self.get_contractor_job_cost(c, j)
         return profit
 
+    # PART H: Get the profit
     def validate_and_get_profit(self, soln:dict)->int:
         """Validate that the solution is correct, by running all the constraints
            If the solution is not valid, then an exception is raised
@@ -236,6 +240,7 @@ class Project:
         return self.get_profit(soln)
 
 
+    # PART H: Solve
     def solve(self):
         """Solve the model
 
@@ -562,6 +567,7 @@ def main():
     prj = Project('Assignment_DA_1_data.xlsx')
     print("Created all variables, calling solver...")
 
+    # PART H: Solve
     solver, num_solutions = prj.solve()
     print(f"{num_solutions} solutions")
 

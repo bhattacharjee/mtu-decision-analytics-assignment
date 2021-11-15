@@ -101,6 +101,11 @@ class Project:
         # corresponding variable is set to True
         self.crtvars_pmjc()
 
+        # PART B-2
+        # Add constraints to account for the fact that not all contractors
+        # can do all jobs
+        self.crtcons_job_contractor()
+
         # PART C: Contractors cannot work on two projects simultaneously
         self.crtcons_contractor_single_simult_project()
 
@@ -127,7 +132,6 @@ class Project:
         # all jobs for the project must be done
         self.crtcons_complete_all_jobs_for_project()
 
-        self.crtcons_job_contractor()
     
 
     def validate_solution(self, soln:dict)->None:
@@ -272,7 +276,7 @@ class Project:
     # PART B: Create teh variables
     # For each project picked, have a T/F variable
     def crtvars_p(self):
-        """[summary]
+        """Create the 1D array of variables for which projects are picked up
         """
         # Create a single variable for each project
         # Also lookup the dependencies DF and add constraints accordingly
@@ -318,7 +322,9 @@ class Project:
     # if a contractor picks up a job in a month for a project, then the
     # corresponding variable is set to True
     def crtvars_pmjc(self):
-        """[summary]
+        """Create the 4D matrix of variables
+           PROJECTS, MONTHS, JOBS, CONTRACTORS
+           are the 4 axes
         """
         # 4-D array of variables: Project, Month, Job, Contractor
         for project in self.project_names:
@@ -431,21 +437,24 @@ class Project:
                     .OnlyEnforceIf(self.var_p[p].Not())
 
     def get_contractor_job_cost(self, c:str, j:str)->float:
-        """[summary]
+        """From the dataframe loaded from the excel,
+           get what contractor c charges for job j.
+           If the contractor cannot do the job, NaN is returned
 
         Args:
-            c (str): [description]
-            j (str): [description]
+            c (str): name of contractor
+            j (str): name of job
 
         Returns:
-            float: [description]
+            float: cost if applicable, NaN if not possible
         """
         row = self.quote_df[self.quote_df['Contractor'] == c]
         value = row[j].tolist()[0]
         return value
 
     def get_project_value(self, p:str)->int:
-        """[summary]
+        """Get the value of the project as was mentioned in the excel
+           The excel is loaded in the dataframe value_df
 
         Args:
             p (str): [description]
@@ -457,17 +466,23 @@ class Project:
         value = row['Value'].tolist()[0]
         return value
 
+    # PART B-2
+    # Add constraints to account for the fact that not all contractors
+    # can do all jobs
     def crtcons_job_contractor(self)->None:
-        """[summary]
+        """All contractors cannot do all jobs. If a contractor
+           cannot do a job, then the cost for that contractor and job in the
+           excel sheet is NaN.
         """
         # Not all contractors can do all jobs
 
         def add_constraint(c:str, j:str):
-            """[summary]
+            """Add a constraint that contractor c cannot do job j
+               This is a simple constraint of negation
 
             Args:
-                c (str): [description]
-                j (str): [description]
+                c (str): contractor (name)
+                j (str): job (name)
             """
             # Given c, j set to false All p, m
             variables = []

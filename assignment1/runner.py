@@ -27,7 +27,13 @@ def main():
             action='store_true')
     args = parser.parse_args()
     if args.sudoku:
+        sudoku_main()
+    elif args.projects:
+        projects_main()
+    elif args.tiramisu:
         tiramisu_main()
+    else:
+        assert(False)
 
 if "__main__" == __name__:
     main()

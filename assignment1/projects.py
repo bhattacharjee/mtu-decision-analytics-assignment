@@ -600,4 +600,5 @@ def projects_main():
     solver, num_solutions = prj.solve()
     print(f"{num_solutions} solutions")
 
-projects_main()
+if "__main__" == __name__:
+    projects_main()

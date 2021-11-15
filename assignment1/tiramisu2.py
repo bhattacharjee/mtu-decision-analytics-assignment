@@ -12,6 +12,9 @@ CONSTRAINT3_INTERPRETATION_1 = True
 CONSTRAINT3_INTERPRETATION_2 = False 
 CONSTRAINT3_INTERPRETATION_3 = False
 
+# For constraint 9
+# INTERPRETATION 1 is True if both 
+# INTERPRETATION 2 and INTERPRETATION 3 are false
 CONSTRAINT9_INTERPRETATION_2 = True
 CONSTRAINT9_INTERPRETATION_3 = False 
 
@@ -347,17 +350,6 @@ def main():
                 person_dessert["Daniel"]["Ice_Cream"].Not(),                \
                 person_drink["Daniel"]["Coke"].Not()                        \
             ]).OnlyEnforceIf(person_dessert["James"]["Chocolate_Cake"])
-    if CONSTRAINT9_INTERPRETATION_2:
-        model.AddBoolOr(                                                    \
-                [                                                           \
-                    person_dessert["James"]["Ice_Cream"],                   \
-                    person_drink["James"]["Coke"]                           \
-                ]).OnlyEnforceIf(person_dessert["Daniel"]["Chocolate_Cake"])
-        model.AddBoolOr(                                                    \
-                [                                                           \
-                    person_dessert["Daniel"]["Ice_Cream"],                  \
-                    person_drink["Daniel"]["Coke"]                          \
-                ]).OnlyEnforceIf(person_dessert["James"]["Chocolate_Cake"])
 
     # The problem statement doesn't say so, but probably the two conditions
     # below are implicit. If the two conditions below are added,
@@ -370,7 +362,7 @@ def main():
     # The man who has the chocolate cake doesn't have ice cream or coke
     # Since there is already one condition that someone cannot have two
     # desserts, we only need to cover for coke
-    elif CONSTRAINT9_INTERPRETATION_3:
+    if CONSTRAINT9_INTERPRETATION_2:
         model.AddBoolAnd(                                                   \
                 [                                                           \
                     person_drink["James"]["Coke"].Not()                     \
@@ -379,6 +371,26 @@ def main():
                 [                                                           \
                     person_drink["Daniel"]["Coke"].Not()                    \
                 ]).OnlyEnforceIf(person_dessert["Daniel"]["Chocolate_Cake"])
+    # Another way to arrive at a single solution (which incidentally is the
+    # same, is to assume that the 'Not' is misplaced, and assume that
+    # one man has chocolate Cake, and the other prefers to have Ice Cream
+    # Or Coke but cannot have both
+    # Since we've already added conditions that the men cannot have
+    # Ice cream and Coke  both, we only need to add a condition that they
+    # have either of them when the other man has chocolate cake.
+    # Again, I'm not sure which of the three assumptions is correct
+    elif CONSTRAINT9_INTERPRETATION_3:
+        model.AddBoolOr(                                                    \
+                [                                                           \
+                    person_dessert["James"]["Ice_Cream"],                   \
+                    person_drink["James"]["Coke"]                           \
+                ]).OnlyEnforceIf(person_dessert["Daniel"]["Chocolate_Cake"])
+        model.AddBoolOr(                                                    \
+                [                                                           \
+                    person_dessert["Daniel"]["Ice_Cream"],                  \
+                    person_drink["Daniel"]["Coke"]                          \
+                ]).OnlyEnforceIf(person_dessert["James"]["Chocolate_Cake"])
+
 
     solver = cp_model.CpSolver()
     status = solver.SearchForAllSolutions(model, solution_printer)

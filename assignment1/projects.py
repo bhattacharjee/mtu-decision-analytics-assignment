@@ -71,16 +71,39 @@ class Project:
         Args:
             excel_file (str): [description]
         """
+
+        # Dataframe that specifies all the projects in the excel
+        # This contains the months and jobs for each project
         self.project_df = None
+
+        # Dataframe that specifies how much each contractor charges, from excel
         self.quote_df = None
+
+        # Dataframe that species which projects depend on others, frome excel
         self.depend_df = None
+
+        # Dataframe the specifies the values of all projects
         self.value_df = None
+
+        # Names of projects, array of str
         self.project_names = None
+
+        # Names of jobs, array of str
         self.job_names = None
+
+        # Names of contractors, array of str
         self.contractor_names = None
+
+        # Names of months, array of str
         self.month_names = None
+
+        # path to excel file
         self.excel_file = excel_file
+
+        # The Model
         self.model = cp_model.CpModel()
+
+        # The solver
         self.solver = cp_model.CpSolver()
 
         # One variable per project to indicate whether it is picked up or not
@@ -132,6 +155,7 @@ class Project:
 
         # Implicit constraint, if a project is selected, then
         # all jobs for the project must be done
+        # Also, only one contractor can do job in a month
         self.crtcons_complete_all_jobs_for_project()
 
     
@@ -298,6 +322,7 @@ class Project:
         for p in self.project_names:
             self.var_p[p] = self.model.NewBoolVar(f"{p}")
 
+    # PART F: Add constraints for dependencies between projects
     def crtcons_project_dependencies_conflicts(self):
         """Add constraints for dependencies between projects.
            We have already stored the dependencies of projects in the
@@ -415,9 +440,13 @@ class Project:
 
     # Implicit constraint, if a project is selected, then
     # all jobs for the project must be done
+    # Also, only one contractor can do job in a month
     def crtcons_complete_all_jobs_for_project(self):
         """Implicit constraint, if a project is selected, then
            all jobs for the project must be done
+           Also, only one contractor can do a job in a month. This is 
+           ensured by taking the sum of the variables for all contractors, for
+           a specified contractor, project and month
         """
         # If a project is selected, then each job for the project must be
         # done in the month specified

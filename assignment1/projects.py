@@ -108,12 +108,26 @@ class Project:
         # (for a project and month)
         self.crtcons_one_contractor_per_job()
 
-        self.crtcons_project_dependencies_conflicts()
-        self.crtcons_pmjc_p()
-        self.crtcons_complete_all_jobs_for_project()
+        # PART E: If a project is not selected, no one should work on it
         self.crtcons_project_not_selected()
-        self.crtcons_job_contractor()
+
+        # PART F: Add constraints for dependencies between projects
+        self.crtcons_project_dependencies_conflicts()
+
+        # PART G: Add constraints so that difference between the value of
+        # projects delivered and the cost of all contractors is at least 2160
         self.crtcons_profit_margin(2160)
+
+        # Implicit constraint, if any contractor picks up any job
+        # for any project in any month in the 4D array, then the project
+        # must have been picked up in the 1D projects array
+        self.crtcons_pmjc_p()
+
+        # Implicit constraint, if a project is selected, then
+        # all jobs for the project must be done
+        self.crtcons_complete_all_jobs_for_project()
+
+        self.crtcons_job_contractor()
     
 
     def validate_solution(self, soln:dict)->None:
@@ -266,7 +280,9 @@ class Project:
             self.var_p[p] = self.model.NewBoolVar(f"{p}")
 
     def crtcons_project_dependencies_conflicts(self):
-        """[summary]
+        """Add constraints for dependencies between projects.
+           We have already stored the dependencies of projects in the
+           dataframe self.depend_df
         """
         def add_required_dependency(p1:str, p2:str)->None:
             # p1 implies p2
@@ -277,6 +293,8 @@ class Project:
                     ])
 
         def add_conflict_dependency(p1:str, p2:str)->None:
+            # P1 is incompatible with P2, so both of them cannot be TRUE
+            # NOT(A AND B) is written here as NOT A OR NOT B
             self.model.AddBoolOr(                                           \
                     [                                                       \
                         self.var_p[p1].Not(),                               \
@@ -316,8 +334,13 @@ class Project:
                 prj_variables[month] = mnth_variables
             self.var_pmjc[project] = prj_variables
 
+    # Implicit constraint, if any contractor picks up any job
+    # for any project in any month in the 4D array, then the project
+    # must have been picked up in the 1D projects array
     def crtcons_pmjc_p(self):
-        """[summary]
+        """Implicit constraint, if any contractor picks up any job
+           for any project in any month in the 4D array, then the project
+           must have been picked up in the 1D projects array
         """
         # if an entry in pmjc is True then the corresponding entry in p must
         # also be true
@@ -369,8 +392,11 @@ class Project:
             ret[prjname] = jobmonthlist 
         return ret
 
+    # Implicit constraint, if a project is selected, then
+    # all jobs for the project must be done
     def crtcons_complete_all_jobs_for_project(self):
-        """[summary]
+        """Implicit constraint, if a project is selected, then
+           all jobs for the project must be done
         """
         # If a project is selected, then each job for the project must be
         # done in the month specified
@@ -378,14 +404,20 @@ class Project:
             cvars = [self.var_pmjc[p][m][j][c] for c in self.contractor_names]
             self.model.Add(sum(cvars) == 1).OnlyEnforceIf(self.var_p[p])
 
+        # rltn is a dictionary of the following format
+        # project -> [(month1, job1), (month2, job2), ...]
         rltn = self.get_project_job_month_relationships()
         for p, monthjoblist in rltn.items():
             for monthjob in monthjoblist:
                 m, j = monthjob
                 add_constraint(p, j, m)
 
+    # PART E: If a project is not selected, no one should work on it
     def crtcons_project_not_selected(self):
-        """[summary]
+        """If a project is not selected, then no one should work on it
+           This means that
+
+           Not ProjectX => sum(all months, jobs, contractors for ProjectX) == 0
         """
         # If a project is not selected none of its jobs should
         # be done
@@ -451,16 +483,21 @@ class Project:
                 if cannotdo:
                     add_constraint(c, j)
 
+    # PART G: Add constraints so that difference between the value of
+    # projects delivered and the cost of all contractors is at least 2160
     def crtcons_profit_margin(self, margin:int)->None:
-        """[summary]
+        """Add constraints so that the difference between the value
+           of the projects delivered and the cost of all contractors is 
+           at least margin.
 
         Args:
-            margin (int): [description]
+            margin (int): the margin
         """
-        revenue = []
+        revenue = []        # This is the value of the projects delivered
         for p in self.project_names:
             revenue.append(self.get_project_value(p) * self.var_p[p])
-        expenses = []
+
+        expenses = []       # This is the cost of all contractors
         for p in self.project_names:
             for m in self.month_names:
                 for j in self.job_names:
@@ -469,6 +506,8 @@ class Project:
                         cost = self.get_contractor_job_cost(c, j)
                         cost = 0 if math.isnan(cost) else int(cost)
                         expenses.append(cost * var)
+
+        # Add the constraint that revenue is at least expenses + margin
         self.model.Add(sum(revenue) >= sum(expenses) + margin)
 
     # PART D-1: Only one contractor should be assined to a job

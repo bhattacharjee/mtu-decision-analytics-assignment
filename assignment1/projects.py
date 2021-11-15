@@ -86,15 +86,30 @@ class Project:
         # 4-D dict of variables: Project, Month, Job, Contractor
         self.var_pmjc = {}
 
+        # PART A: READ THE EXCEL
         self.read_excel(self.excel_file)
 
+        # PART B: Create teh variables
+        # For each project picked, have a T/F variable
         self.crtvars_p()
+
+        # PART B: Create teh variables
+        # Have a 4-D array of T/F variables, the dimensions specify the
+        # following:
+        # PROJECTS, MONTHS, JOBS, CONTRACTORS
+        # if a contractor picks up a job in a month for a project, then the
+        # corresponding variable is set to True
         self.crtvars_pmjc()
+
+        # PART C: Contractors cannot work on two projects simultaneously
+        self.crtcons_contractor_single_simult_project()
+
+        # PART D-1: Only one contractor should be assined to a job
+        # (for a project and month)
+        self.crtcons_one_contractor_per_job()
 
         self.crtcons_project_dependencies_conflicts()
         self.crtcons_pmjc_p()
-        self.crtcons_contractor_single_simult_project()
-        self.crtcons_one_contractor_per_job()
         self.crtcons_complete_all_jobs_for_project()
         self.crtcons_project_not_selected()
         self.crtcons_job_contractor()
@@ -206,6 +221,7 @@ class Project:
         print(self.solver.StatusName(status))
         return self.solver, solution_printer.solutions
 
+    # PART A: Read the Excel
     def read_excel(self, excelfile:str) -> None:
         """[summary]
 
@@ -239,6 +255,8 @@ class Project:
         print(f"Job Names       : {len(self.job_names)}")
         print(f"Contractor Names: {len(self.contractor_names)}")
 
+    # PART B: Create teh variables
+    # For each project picked, have a T/F variable
     def crtvars_p(self):
         """[summary]
         """
@@ -275,6 +293,12 @@ class Project:
                     if ('conflict' == e_p1_p2.lower()):
                         add_conflict_dependency(p1, p2)
 
+    # PART B: Create teh variables
+    # Have a 4-D array of T/F variables, the dimensions specify the
+    # following:
+    # PROJECTS, MONTHS, JOBS, CONTRACTORS
+    # if a contractor picks up a job in a month for a project, then the
+    # corresponding variable is set to True
     def crtvars_pmjc(self):
         """[summary]
         """
@@ -307,8 +331,12 @@ class Project:
                                     self.var_p[p],                          \
                                 ])
 
+    # PART C: Contractors cannot work on two projects simultaneously
     def crtcons_contractor_single_simult_project(self):
-        """[summary]
+        """Implement a constraint that a contractor cannot work on two
+           projects on the same month.
+           For every contractor and month, the sum of jobs in all projects
+           must be at most 1
         """
         # This constraint can be simplified, since a contractor can only do
         # one project at a time, that implies he can only do one job
@@ -324,10 +352,10 @@ class Project:
                 self.model.Add(sum(variables) <= 1)
 
     def get_project_job_month_relationships(self)->dict:
-        """[summary]
+        """Get the list of (jobs, months) for each project
 
         Returns:
-            dict: [description]
+            dict: keys are projects, values are array of (month, job)
         """
         # return a hash: project -> [(month, job) ....]
         ret = {}
@@ -443,8 +471,10 @@ class Project:
                         expenses.append(cost * var)
         self.model.Add(sum(revenue) >= sum(expenses) + margin)
 
+    # PART D-1: Only one contractor should be assined to a job
+    # (for a project and month)
     def crtcons_one_contractor_per_job(self)->None:
-        """[summary]
+        """Only one contractor per job needs to work on it
         """
         # Only one contractor per job
 
@@ -456,6 +486,8 @@ class Project:
                     variables.append(self.var_pmjc[p][m][j][c])
                 self.model.Add(sum(variables) <= 1).OnlyEnforceIf(self.var_p[p])
 
+        # rltn is a hashmap where every item is
+        # Project => [(month1, job1), (month2, job2), ...]
         rltn = self.get_project_job_month_relationships()
         for p, mjlist in rltn.items():
             for m, j in mjlist:
@@ -464,7 +496,7 @@ class Project:
 
 def main():
     prj = Project('Assignment_DA_1_data.xlsx')
-    prj.get_project_job_month_relationships()
+    print("Created all variables, calling solver...")
 
     solver, num_solutions = prj.solve()
     print(f"{num_solutions} solutions")

@@ -3,7 +3,8 @@
 from ortools.sat.python import cp_model
 
 def numbers() -> range:
-    """[summary]
+    """This routine just makes it easier to loop
+       through the numbers 1..9
 
     Returns:
         range: [description]
@@ -11,52 +12,66 @@ def numbers() -> range:
     return range(1,10)
 
 def row(r:int) -> list:
-    """[summary]
+    """Returns the list of tuples that specify the
+       indices for all squares of a row
+       This routine just makes it easier to iterate a row
 
     Args:
-        r (int): [description]
+        r (int): tow number whose indices are to be generated
 
     Returns:
-        list: [description]
+        list: list of tuples specifying the row indices, eg.
+              [(3, 0), (3, 1), (3, 2), ... ]
     """
     return [(r, i) for i in range(9)]
 
 def column(c:int) -> list:
-    """[summary]
+    """Returns the list of tuples that specify the indices of
+       all squares for a given column.
+       This routine just makes it easier to iterate through
+       all squares of a column
 
     Args:
-        c (int): [description]
+        c (int): the column whose indices are to be generated
 
     Returns:
-        list: [description]
+        list: list of tuples specifying the column indices, eg.
+              [(0, 4), (1, 4), (2, 4), ... ]
     """
     return [(i, c) for i in range(9)]
 
 def square(ind: tuple) -> list:
-    """[summary]
+    """Returns a list of tuples that specify the indices of all cells
+       inside a sub square
 
     Args:
-        ind (tuple): [description]
+        ind (tuple): specifies the indices of the top left cell of the
+                     sub-square
 
     Returns:
-        list: [description]
+        list: all cells in the sub-square. eg.
+              [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2), (2, 0),
+               (2, 1), (2, 2)]
     """
     return [(i + ind[0], j + ind[1]) for i in range(3) for j in range(3)]
 
 def square_starts() -> list:
-    """[summary]
+    """Returns the index of the top left square of each cell
 
     Returns:
-        list: [description]
+        list: [(0, 0), (0, 3), (0, 6), (3, 0), (3, 3), (3, 6),
+                (6, 0), (6, 3), (6, 6)]
 
     Yields:
-        Iterator[list]: [description]
+        Iterator[list]: the tuple specifying the index
     """
     for i in range(0,9,3):
         for j in range(0,9,3): yield (i, j)
 
 class SudokuSolutionPrinter(cp_model.CpSolverSolutionCallback):
-    """[summary]
+    """Print the solution, also validate that the solution is indeed
+       correct and that no numbers are repeated and that all
+       numbers are present
 
     Args:
         cp_model ([type]): [description]
@@ -69,10 +84,14 @@ class SudokuSolutionPrinter(cp_model.CpSolverSolutionCallback):
         self.solutions = 0
 
     def validate_all_numbers_present(self, indices:dict):
-        """[summary]
+        """validate that all numbers are present in the
+           set of indices provided
 
         Args:
-            indices (dict): [description]
+            indices (dict): indices to look for all the numbers,
+                            this could be all indices of a row,
+                            all indices of a column, or all indices
+                            of a sub-square
         """
         s = set()
         count = 0
@@ -90,11 +109,11 @@ class SudokuSolutionPrinter(cp_model.CpSolverSolutionCallback):
         assert(9 == len(s) and 9 == count)
 
     def validate_cell(self, i, j):
-        """[summary]
+        """Validate that each cell should have exactly one number
 
         Args:
-            i ([type]): [description]
-            j ([type]): [description]
+            i ([type]): first axis index of the cell
+            j ([type]): second axis index of the cell
         """
         # Each cell should have exactly one number
         count = 0
@@ -104,7 +123,11 @@ class SudokuSolutionPrinter(cp_model.CpSolverSolutionCallback):
         assert(count == 1)
 
     def validate_solution(self):
-        """[summary]
+        """Validate few things things
+            1. for each cell, only one variable must be true
+            2. For each row, all numbers must be present, and only once
+            3. For each column, all numbers must be present and only once
+            4. For each sub-square, all numbers must be present and only once
         """
         [self.validate_cell(i, j) for i in range(9) for j in range(9)]
 
@@ -149,13 +172,15 @@ class SudokuSolutionPrinter(cp_model.CpSolverSolutionCallback):
 
 
 def create_variables(model) -> dict:
-    """[summary]
+    """Create the variables, the variables are a 3 D array
+       of 9x9x9
+       For each row, for each column, there are 9 boolean variables
 
     Args:
         model ([type]): [description]
 
     Returns:
-        dict: [description]
+        dict: dictionary of variables, can be indexed in a 3D way
     """
     def get_inner_dict(i, j):
         return {k: model.NewBoolVar(f"--[{i},{j}]->{k}--") for k in numbers()}
@@ -167,7 +192,8 @@ def create_variables(model) -> dict:
 
 
 def set_constraint_one_number_per_cell(model, sudoku:dict):
-    """[summary]
+    """add constraint that for each row, column, only one of the variable
+       must be true. That is one cell can contain exactly one number
 
     Args:
         model ([type]): [description]
@@ -179,12 +205,14 @@ def set_constraint_one_number_per_cell(model, sudoku:dict):
 
 
 def set_constraint_no_duplicates(model, sudoku:dict, indices):
-    """[summary]
+    """Given a set of indices for cells (eg. all cells in one row, 
+       or one column), ensure that there are no duplicates in those cells.
 
     Args:
         model ([type]): [description]
         sudoku (dict): [description]
-        indices ([type]): [description]
+        indices ([type]): indices of the cells in which there should
+                          not be any duplicates
     """
     def update(model, sudoku, i, j, n):
         r1, c1 = indices[i]
@@ -203,7 +231,8 @@ def set_constraint_no_duplicates(model, sudoku:dict, indices):
 
 
 def set_constraint_all_numbers_present(model, sudoku:dict, indices):
-    """[summary]
+    """Given a set of indices for cells (eg. all cells in one row,
+       or one column), ensure that all the numbers 1..9 are present.
 
     Args:
         model ([type]): [description]
@@ -215,7 +244,8 @@ def set_constraint_all_numbers_present(model, sudoku:dict, indices):
 
 
 def set_explicit_constraints(model, sudoku:dict):
-    """[summary]
+    """set the explicit constraints according to what is specified
+       in the assignment document
 
     Args:
         model ([type]): [description]

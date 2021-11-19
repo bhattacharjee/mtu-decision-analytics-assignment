@@ -145,7 +145,7 @@ class SudokuSolutionPrinter(cp_model.CpSolverSolutionCallback):
         print(f"Solution # {self.solutions}")
         print("++=======++===+===+===+===+===+===+===+===+===++")
         print("||   #   ||-0-|-1-|-2-|-3-|-4-|-5-|-6-|-7 |-8-||")
-        print("++=======++===+===+===+===+===+===+===+===+===++")
+        print("++*******++***+***+***+***+***+***+***+***+***++")
 
         for i in range(9):
             output_line = f"||   {i}  "

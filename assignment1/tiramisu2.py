@@ -84,6 +84,11 @@ class TiramisuSolutionPrinter(cp_model.CpSolverSolutionCallback):
                     if self.Value(self.person_starter[person][starter])]
             [print(f"     - {maincourse}") for maincourse in self.maincourse\
                     if self.Value(self.person_maincourse[person][maincourse])]
+                    
+        for person in self.person:
+            if self.Value(self.person_dessert[person]['Tiramisu']):
+                print(f"\n\n{person} has the Tiramisu")
+                break
         
         print()
         print()
@@ -91,14 +96,20 @@ class TiramisuSolutionPrinter(cp_model.CpSolverSolutionCallback):
 
 def create_variables_and_implicit_constraints(
         model,
-        var_list1:list,
+        var_list1: list,
         var_list2: list) -> dict:
-    """[summary]
+    """Create a 2D variable array given the two axes
+       For example, given Person and Drink, create a 2D array
+       for each person and drink
+       Also create the implicit constraints that
+       1. each person must have a drink
+       2. each person can have exactly one drink
+       3. No two persons have the same drink
 
     Args:
-        model ([type]): [description]
-        var_list1 (list): [description]
-        var_list2 (list): [description]
+        model ([type]): the CP SAT model
+        var_list1 (list): list of items in first axes (eg. person names)
+        var_list2 (list): list of items in second axis (eg. drink names)
 
     Returns:
         dict: [description]

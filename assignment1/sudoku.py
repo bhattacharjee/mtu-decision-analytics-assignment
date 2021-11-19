@@ -125,7 +125,7 @@ class SudokuSolutionPrinter(cp_model.CpSolverSolutionCallback):
         assert(count == 1)
 
     def validate_solution(self):
-        """Validate few things things
+        """Validate few things things, this is essentially debuging code
             1. for each cell, only one variable must be true
             2. For each row, all numbers must be present, and only once
             3. For each column, all numbers must be present and only once

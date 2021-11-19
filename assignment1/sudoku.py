@@ -65,8 +65,10 @@ def square_starts() -> list:
     Yields:
         Iterator[list]: the tuple specifying the index
     """
-    for i in range(0,9,3):
-        for j in range(0,9,3): yield (i, j)
+    #for i in range(0,9,3):
+    #    for j in range(0,9,3): yield (i, j)
+    # Using a more concise way of writing the above lines
+    return ((i, j) for i in range(0, 9, 3) for j in range(0, 9, 3))
 
 class SudokuSolutionPrinter(cp_model.CpSolverSolutionCallback):
     """Print the solution, also validate that the solution is indeed

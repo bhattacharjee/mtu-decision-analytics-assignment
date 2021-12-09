@@ -65,7 +65,11 @@ class Task1():
         # factory f
         self.var_sfm = self.create_supplier_factory_material_variables()
 
+        # Sheet 1: Supplier Stock
         self.create_supplier_stock_constraints()
+
+        # Sheet 5: production capacity
+        self.create_production_capacity_constraints()
 
     def replace_nans(self, df:pd.DataFrame, newValue:int):
         df.replace(float('nan'), float(newValue), inplace=True)
@@ -112,6 +116,7 @@ class Task1():
             ret[supplier] = outer
         return ret
 
+    # Sheet 1
     def create_supplier_stock_constraints(self):
         """ Create constraints for stocks each supplier has """
         
@@ -135,6 +140,31 @@ class Task1():
                     set_supplier_zero(supplier, material)
                 else:
                     set_supplier_capacity(supplier, material, capacity)
+
+    # Sheet 5
+    def create_production_capacity_constraints(self):
+        """ Create constraints for each product and  """
+        def set_zero(factory:str, product:str):
+            for customer in self.customer_names:
+                var = self.var_fcp[factory][customer][product]
+                constraint = self.solver.Constraint(0, 0)
+                constraint.SetCoefficient(var, 1)
+
+        def set_capacity(factory:str, product:str, capacity:int):
+            constraint = self.solver.Constraint(0, capacity)
+            for customer in self.customer_names:
+                var = self.var_fcp[factory][customer][product]
+                constraint.SetCoefficient(var, 1)
+
+        for factory in self.factory_names:
+            for product in self.product_names:
+                capacity = get_element(\
+                    self.production_capacity_df, product, factory)
+                if 0 == capacity:
+                    set_zero(factory, product)
+                else:
+                    set_capacity(factory, product, capacity)
+
 
 def t1_main()->None:
     t1 = Task1("./Assignment_DA_2_Task_1_data.xlsx")

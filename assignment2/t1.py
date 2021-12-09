@@ -29,8 +29,8 @@ class Task1():
         self.customer_demand_df = self.read_csv("Customer demand")
         self.replace_nans(self.customer_demand_df, 0)
 
-        self.shipping_costs_df = self.read_csv("Shipping costs")
-        self.replace_nans(self.shipping_costs_df, 'inf')
+        self.shipping_cost_df = self.read_csv("Shipping costs")
+        self.replace_nans(self.shipping_cost_df, 'inf')
         
         self.product_names = [str(x) for x in \
             self.product_requirements_df['Unnamed: 0']]
@@ -44,10 +44,19 @@ class Task1():
         self.material_names = [str(c) for c in \
             self.product_requirements_df.columns][1:]
 
+        self.customer_names = [str(c) for c in \
+            self.customer_demand_df][1:]
+
         self.solver = pywraplp.Solver(\
                         'LPWrapper',\
                         pywraplp.Solver.GLOP_LINEAR_PROGRAMMING)
 
+
+        self.factory_customer = self.create_factory_customer_variables()
+
+        self.supplier_factory = self.create_supplier_factory_variables()
+
+        print(self.supplier_factory)
 
 
     def replace_nans(self, df:pd.DataFrame, newValue:int):
@@ -63,6 +72,31 @@ class Task1():
         print()
         print()
         return df
+
+    def create_factory_customer_variables(self):
+        ret = {}
+        for factory in self.factory_names:
+            inner = {}
+            for customer in self.customer_names:
+                varname = f"factory:{factory}-customer:{customer}"
+                variable = self.solver.NumVar(\
+                    0, self.solver.infinity(), varname)
+                inner[customer] = variable
+            ret[factory] = inner
+        return ret
+
+    def create_supplier_factory_variables(self):
+        ret = {}
+        for supplier in self.supplier_names:
+            inner = {}
+            for factory in self.factory_names:
+                varname = f"supplier:{supplier}-factory:{factory}"
+                variable = self.solver.NumVar(\
+                    0, self.solver.infinity(), varname)
+                inner[factory] = variable
+            ret[supplier] = inner
+        return ret
+
 
 
 

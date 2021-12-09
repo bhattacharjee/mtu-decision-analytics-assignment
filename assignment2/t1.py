@@ -59,14 +59,10 @@ class Task1():
         # 3D matrix. How many units of material m is supplied by supplier s to
         # factory f
         self.var_sfm = self.create_supplier_factory_material_variables()
-        
-
-
 
     def replace_nans(self, df:pd.DataFrame, newValue:int):
         df.replace(float('nan'), float(newValue), inplace=True)
         print(df)
-
 
     def read_csv(self, sheet_name:str)->pd.DataFrame:
         df = pd.read_excel(self.excel_file_name, sheet_name=sheet_name)
@@ -109,12 +105,8 @@ class Task1():
             ret[supplier] = outer
         return ret
 
-
-
-
 def t1_main()->None:
     t1 = Task1("./Assignment_DA_2_Task_1_data.xlsx")
     
-
 if "__main__" == __name__:
     t1_main()

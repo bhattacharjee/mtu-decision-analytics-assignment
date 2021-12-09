@@ -56,6 +56,8 @@ class Task1():
                         'LPWrapper',\
                         pywraplp.Solver.GLOP_LINEAR_PROGRAMMING)
 
+        self.cost_objective = self.solver.Objective()
+
 
         # 3D matrix, how many units of product p is supplied by factory f
         # to customer c
@@ -71,17 +73,20 @@ class Task1():
         # Sheet 5: production capacity
         self.create_production_capacity_constraints()
 
+        # Sheet 7: Create a constraint that all customer demands are met
+        self.create_constraint_meet_customer_demands()
+
+        # Sheet 6
+        self.accumulate_production_cost()
+
+        # Sheet 8
+        self.accumulate_shipping_cost()
+
     def replace_nans(self, df:pd.DataFrame, newValue:int):
         df.replace(float('nan'), float(newValue), inplace=True)
-        print(df)
 
     def read_csv(self, sheet_name:str)->pd.DataFrame:
         df = pd.read_excel(self.excel_file_name, sheet_name=sheet_name)
-        print()
-        print(sheet_name)
-        print(df)
-        print()
-        print()
         return df
 
     def create_factory_customer_product_variables(self):
@@ -164,6 +169,54 @@ class Task1():
                     set_zero(factory, product)
                 else:
                     set_capacity(factory, product, capacity)
+
+
+    # Sheet 7
+    def create_constraint_meet_customer_demands(self):
+        """Ensure all customer demands are met"""
+
+        def set_zero(customer:str, product:str):
+            for factory in self.factory_names:
+                var = self.var_fcp[factory][customer][product]
+                constraint = self.solver.Constraint(0, 0)
+                constraint.SetCoefficient(var, 1)
+
+        def set_demand(customer:str, product:str, demand):
+            constraint = self.solver.Constraint(demand, demand)
+            for factory in self.factory_names:
+                var = self.var_fcp[factory][customer][product]
+                constraint.SetCoefficient(var, 1)
+
+        for product in self.product_names:
+            for customer in self.customer_names:
+                demand = get_element(self.customer_demand_df, product, customer)
+                if 0 == demand:
+                    set_zero(customer, product)
+                else:
+                    set_demand(customer, product, demand)
+
+    # Sheet 6
+    def accumulate_production_cost(self):
+        for factory in self.factory_names:
+            for product in self.product_names:
+                cost_per_unit = get_element(\
+                    self.production_cost_df, product, factory)
+                for customer in self.customer_names:
+                    var = self.var_fcp[factory][customer][product]
+                    self.cost_objective.SetCoefficient(\
+                        var, float(cost_per_unit))
+
+    # Sheet 8
+    def accumulate_shipping_cost(self):
+        for factory in self.factory_names:
+            for customer in self.customer_names:
+                shipping_cost_per_unit = get_element(\
+                    self.shipping_cost_df, factory, customer)
+                for product in self.product_names:
+                    var = self.var_fcp[factory][customer][product]
+                    self.cost_objective.SetCoefficient(\
+                        var, float(shipping_cost_per_unit))
+
 
 
 def t1_main()->None:

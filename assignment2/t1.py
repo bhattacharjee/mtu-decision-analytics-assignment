@@ -16,8 +16,8 @@ class Task1():
         self.supplier_stock_df = self.read_csv("Supplier stock")
         self.replace_nans(self.supplier_stock_df, 0)
 
-        self.raw_materials_stock_df = self.read_csv("Raw material costs")
-        self.replace_nans(self.raw_materials_stock_df, 'inf')
+        self.raw_material_cost_df = self.read_csv("Raw material costs")
+        self.replace_nans(self.raw_material_cost_df, 'inf')
 
         self.raw_material_shipping_df = self.read_csv("Raw material shipping")
         self.replace_nans(self.raw_material_shipping_df, 'inf')
@@ -70,16 +70,33 @@ class Task1():
         # Sheet 1: Supplier Stock
         self.create_supplier_stock_constraints()
 
+        # Sheet 2: Raw Materials Cost
+        self.accumulate_raw_materials_cost()
+
+        # Sheet 3: Raw Metrials Shipping
+        self.accumulate_raw_materials_shipping_cost()
+
+        # Sheet 4
+        # Implicit, each factory should have all raw materials
+        # to make all the products it makes
+        # This involves a join between var_sfm and var_fcp
+        # For each factory and material
+        # Incoming >= Outgoing
+        # OR
+        # 0 <= Incoming - Outgoing <= INF
+        self.create_constraint_meet_factory_requirements()
+
         # Sheet 5: production capacity
         self.create_production_capacity_constraints()
 
-        # Sheet 7: Create a constraint that all customer demands are met
-        self.create_constraint_meet_customer_demands()
-
-        # Sheet 6
+        # Sheet 6: Production Cost
         self.accumulate_production_cost()
 
-        # Sheet 8
+        # Sheet 7: Customer demand
+        # Create a constraint that all customer demands are met
+        self.create_constraint_meet_customer_demands()
+
+        # Sheet 8: Shipping Cost
         self.accumulate_shipping_cost()
 
     def replace_nans(self, df:pd.DataFrame, newValue:int):
@@ -178,11 +195,11 @@ class Task1():
         def set_zero(customer:str, product:str):
             for factory in self.factory_names:
                 var = self.var_fcp[factory][customer][product]
-                constraint = self.solver.Constraint(0, 0)
+                constraint = self.solver.Constraint(0, self.solver.infinity())
                 constraint.SetCoefficient(var, 1)
 
         def set_demand(customer:str, product:str, demand):
-            constraint = self.solver.Constraint(demand, demand)
+            constraint = self.solver.Constraint(demand, self.solver.infinity())
             for factory in self.factory_names:
                 var = self.var_fcp[factory][customer][product]
                 constraint.SetCoefficient(var, 1)
@@ -217,6 +234,53 @@ class Task1():
                     self.cost_objective.SetCoefficient(\
                         var, float(shipping_cost_per_unit))
 
+    # Sheet 2: Raw Materials Cost
+    def accumulate_raw_materials_cost(self):
+        for supplier in self.supplier_names:
+            for material in self.material_names:
+                material_cost = get_element(\
+                    self.raw_material_cost_df, supplier, material)
+                for factory in self.factory_names:
+                    var = self.var_sfm[supplier][factory][material]
+                    self.cost_objective.SetCoefficient(\
+                        var, float(material_cost))
+
+    # Sheet 3: Raw Metrials Shipping
+    def accumulate_raw_materials_shipping_cost(self):
+        for supplier in self.supplier_names:
+            for factory in self.factory_names:
+                shipping_cost = get_element(\
+                    self.raw_material_shipping_df, supplier, factory)
+                for material in self.material_names:
+                    var = self.var_sfm[supplier][factory][material]
+                    self.cost_objective.SetCoefficient(\
+                        var, float(shipping_cost))
+
+    # Sheet 4
+    # For each factory and material
+    # Incoming >= Outgoing
+    # OR
+    # 0 <= Incoming - Outgoing <= INF
+    def create_constraint_meet_factory_requirements(self):
+        for factory in self.factory_names:
+            for material in self.material_names:
+                constraint = self.solver.Constraint(0, self.solver.infinity())
+
+                # Incoming constraints
+                for supplier in self.supplier_names:
+                    var = self.var_sfm[supplier][factory][material]
+                    constraint.SetCoefficient(var, 1)
+
+                # Outgoing constraints
+                for product in self.product_names:
+                    material_per_unit = \
+                        get_element(self.product_requirements_df,\
+                                    product,\
+                                    material)
+                    material_per_unit = float(-1 * material_per_unit)
+                    var = self.var_fcp[factory][customer][product]
+                    constraint.SetCoefficient(var, material_per_unit)
+        
 
 
 def t1_main()->None:

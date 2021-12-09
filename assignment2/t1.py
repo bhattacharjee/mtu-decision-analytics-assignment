@@ -271,20 +271,26 @@ class Task1():
                     var = self.var_sfm[supplier][factory][material]
                     constraint.SetCoefficient(var, 1)
 
-                # Outgoing constraints
-                for product in self.product_names:
-                    material_per_unit = \
-                        get_element(self.product_requirements_df,\
-                                    product,\
-                                    material)
-                    material_per_unit = float(-1 * material_per_unit)
-                    var = self.var_fcp[factory][customer][product]
-                    constraint.SetCoefficient(var, material_per_unit)
+                for customer in self.customer_names:
+                    # Outgoing constraints
+                    for product in self.product_names:
+                        material_per_unit = \
+                            get_element(self.product_requirements_df,\
+                                        product,\
+                                        material)
+                        material_per_unit = float(-1 * material_per_unit)
+                        var = self.var_fcp[factory][customer][product]
+                        constraint.SetCoefficient(var, material_per_unit)
+                    
+    def solve(self):
+        self.solver.Solve()
+        print(f"Best cost found: {self.cost_objective.Value()}")
         
 
 
 def t1_main()->None:
     t1 = Task1("./Assignment_DA_2_Task_1_data.xlsx")
+    t1.solve()
     
 if "__main__" == __name__:
     t1_main()

@@ -375,7 +375,7 @@ class Task1():
                     value = self.var_sfm[supp][fact][mat].SolutionValue()
                     if (0.0 != value):
                         out_str = out_str + "    "
-                        temp = f"{mat:.15s}: {round(value,2):.2f}"
+                        temp = f"{mat:.15s}: {round(value,2):05.2f}"
                         out_str = out_str + f"{temp:23s}"
                 print(out_str)
 
@@ -395,11 +395,13 @@ class Task1():
                                                 supp, fact)
                     if qty >= EPSILON:
                         cost = cost + (mat_cost + shp_cost) * qty
-                print(f"    - {supp:20s} : {round(cost, 2):.2f}")
+                print(f"    - {supp:20s} : {round(cost, 2):10.2f}")
+
 
     def print_solution(self):
         self.print_supplier_factory_material()
         self.print_supplier_bill_for_each_factory()
+        # TODO: Start from Step L
 
 
 def t1_main()->None:

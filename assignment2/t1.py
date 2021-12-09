@@ -4,6 +4,8 @@ import ortools
 import pandas as pd
 from ortools.linear_solver import pywraplp
 
+EPSILON = 0.001
+
 def get_element(df:pd.DataFrame, rowname:str, colname:str):
     selector = df['Unnamed: 0'] == rowname
     df = df[selector]
@@ -98,6 +100,7 @@ class Task1():
 
         # Sheet 8: Shipping Cost
         self.accumulate_shipping_cost()
+
 
     def replace_nans(self, df:pd.DataFrame, newValue:int):
         df.replace(float('nan'), float(newValue), inplace=True)
@@ -286,11 +289,39 @@ class Task1():
         self.solver.Solve()
         print(f"Best cost found: {self.cost_objective.Value()}")
         
+    # Verify that the stock has not been exceeded for any supplier
+    def verify_supplier_stock_not_exceeded(self):
+        for supplier in self.supplier_names:
+            for materal in self.material_names:
+                accumulated = 0
+                for factory in self.factory_names:
+                    accumulated = accumulated +\
+                        self.var_sfm[supplier][factory][materal].SolutionValue()
+                max_value = get_element(self.supplier_stock_df,\
+                                supplier, materal)
+                assert(accumulated <= max_value + EPSILON)
+
+    # Verify that all customer demands have been met
+    def verify_customer_demands_met(self):
+        for customer in self.customer_names:
+            for product in self.product_names:
+
+                accumulated = 0
+                for factory in self.factory_names:
+                    accumulated = accumulated +\
+                        self.var_fcp[factory][customer][product].SolutionValue()
+                demand = get_element(self.customer_demand_df, product, customer)
+                assert(accumulated - demand > (-1 * EPSILON))
+
+    def verify_solution(self):
+        self.verify_supplier_stock_not_exceeded()
+        self.verify_customer_demands_met()
 
 
 def t1_main()->None:
     t1 = Task1("./Assignment_DA_2_Task_1_data.xlsx")
     t1.solve()
+    t1.verify_solution()
     
 if "__main__" == __name__:
     t1_main()

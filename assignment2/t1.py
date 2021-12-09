@@ -52,11 +52,15 @@ class Task1():
                         pywraplp.Solver.GLOP_LINEAR_PROGRAMMING)
 
 
-        self.factory_customer = self.create_factory_customer_variables()
+        # 3D matrix, how many units of product p is supplied by factory f
+        # to customer c
+        self.var_fcp = self.create_factory_customer_product_variables()
 
-        self.supplier_factory = self.create_supplier_factory_variables()
+        # 3D matrix. How many units of material m is supplied by supplier s to
+        # factory f
+        self.var_sfm = self.create_supplier_factory_material_variables()
+        
 
-        print(self.supplier_factory)
 
 
     def replace_nans(self, df:pd.DataFrame, newValue:int):
@@ -73,28 +77,36 @@ class Task1():
         print()
         return df
 
-    def create_factory_customer_variables(self):
+    def create_factory_customer_product_variables(self):
         ret = {}
         for factory in self.factory_names:
-            inner = {}
+            outer = {}
             for customer in self.customer_names:
-                varname = f"factory:{factory}-customer:{customer}"
-                variable = self.solver.NumVar(\
-                    0, self.solver.infinity(), varname)
-                inner[customer] = variable
-            ret[factory] = inner
+                inner = {}
+                for product in self.product_names:
+                    varname = f"factory:{factory}-customer:{customer}" +\
+                        f"-product:{product}"
+                    variable = self.solver.NumVar(\
+                        0, self.solver.infinity(), varname)
+                    inner[product] = variable
+                outer[customer] = inner
+            ret[factory] = outer 
         return ret
 
-    def create_supplier_factory_variables(self):
+    def create_supplier_factory_material_variables(self):
         ret = {}
         for supplier in self.supplier_names:
-            inner = {}
+            outer = {}
             for factory in self.factory_names:
-                varname = f"supplier:{supplier}-factory:{factory}"
-                variable = self.solver.NumVar(\
-                    0, self.solver.infinity(), varname)
-                inner[factory] = variable
-            ret[supplier] = inner
+                inner = {}
+                for material in self.material_names:
+                    varname = f"supplier:{supplier}-factory:{factory}" +\
+                        f"-material:{material}"
+                    variable = self.solver.NumVar(\
+                        0, self.solver.infinity(), varname)
+                    inner[material] = variable
+                outer[factory] = inner
+            ret[supplier] = outer
         return ret
 
 

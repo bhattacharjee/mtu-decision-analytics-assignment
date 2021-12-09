@@ -4,6 +4,11 @@ import ortools
 import pandas as pd
 from ortools.linear_solver import pywraplp
 
+def get_element(df:pd.DataFrame, rowname:str, colname:str):
+    selector = df['Unnamed: 0'] == rowname
+    df = df[selector]
+    return df[colname].to_numpy()[0]
+
 class Task1():
     def __init__(self, excel_file_name:str):
         self.excel_file_name = excel_file_name
@@ -60,6 +65,8 @@ class Task1():
         # factory f
         self.var_sfm = self.create_supplier_factory_material_variables()
 
+        self.create_supplier_stock_constraints()
+
     def replace_nans(self, df:pd.DataFrame, newValue:int):
         df.replace(float('nan'), float(newValue), inplace=True)
         print(df)
@@ -104,6 +111,30 @@ class Task1():
                 outer[factory] = inner
             ret[supplier] = outer
         return ret
+
+    def create_supplier_stock_constraints(self):
+        """ Create constraints for stocks each supplier has """
+        
+        def set_supplier_zero(supplier:str, material:str):
+            for factory in self.factory_names:
+                var = self.var_sfm[supplier][factory][material]
+                constraint = self.solver.Constraint(0, 0)
+                constraint.SetCoefficient(var, 1)
+
+        def set_supplier_capacity(supplier:str, material:str, capacity:int):
+            constraint = self.solver.Constraint(0, capacity)
+            for factory in self.factory_names:
+                var = self.var_sfm[supplier][factory][material]
+                constraint.SetCoefficient(var, 1)
+
+        for supplier in self.supplier_names:
+            for material in self.material_names:
+                capacity = get_element(\
+                    self.supplier_stock_df, supplier, material)
+                if 0 == capacity:
+                    set_supplier_zero(supplier, material)
+                else:
+                    set_supplier_capacity(supplier, material, capacity)
 
 def t1_main()->None:
     t1 = Task1("./Assignment_DA_2_Task_1_data.xlsx")

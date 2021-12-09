@@ -63,10 +63,12 @@ class Task1():
 
         # 3D matrix, how many units of product p is supplied by factory f
         # to customer c
+        # Indexing: [factory][customer][product]
         self.var_fcp = self.create_factory_customer_product_variables()
 
         # 3D matrix. How many units of material m is supplied by supplier s to
         # factory f
+        # Indexing: [supplier][factory][material]
         self.var_sfm = self.create_supplier_factory_material_variables()
 
         # Sheet 1: Supplier Stock
@@ -313,9 +315,49 @@ class Task1():
                 demand = get_element(self.customer_demand_df, product, customer)
                 assert(accumulated - demand > (-1 * EPSILON))
 
+    # Verify that the production capacity has not been exceeded
+    # for any factory
+    def verify_production_capacity_not_exceeded(self):
+        for factory in self.factory_names:
+            for prod in self.product_names:
+                accumulator = 0.0
+                for customer in self.customer_names:
+                    accumulator = accumulator +\
+                        self.var_fcp[factory][customer][prod].SolutionValue()
+                capacity = get_element(\
+                            self.production_capacity_df, prod, factory)
+                assert(accumulator <= capacity + EPSILON)
+
+
+    # Verify that material requirements are satisfied for each
+    # factory/material  combination based on its deliveries to its customers
+    def verify_material_requirements_satisfied(self):
+        for fact in self.factory_names:
+            for mat in self.material_names:
+
+                # calculate requirements
+                required = 0
+                for prod in self.product_names:
+                    for cust in self.customer_names:
+                        n_prods = self.var_fcp[fact][cust][prod].SolutionValue()
+                        per_unit_requirement = get_element(\
+                                                self.product_requirements_df,\
+                                                prod, mat)
+                        required = required + (n_prods * per_unit_requirement)
+
+                # Calculate actual amount procured
+                procured = 0
+                for supp in self.supplier_names:
+                    procured = procured +\
+                        self.var_sfm[supp][fact][mat].SolutionValue()
+
+                assert(required <= procured + EPSILON)
+
     def verify_solution(self):
         self.verify_supplier_stock_not_exceeded()
         self.verify_customer_demands_met()
+        self.verify_production_capacity_not_exceeded()
+        self.verify_material_requirements_satisfied()
 
 
 def t1_main()->None:

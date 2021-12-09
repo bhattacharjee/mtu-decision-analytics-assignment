@@ -60,6 +60,8 @@ class Task1():
 
         self.cost_objective = self.solver.Objective()
 
+        self.optimal_cost = float('nan')
+
 
         # 3D matrix, how many units of product p is supplied by factory f
         # to customer c
@@ -289,6 +291,7 @@ class Task1():
                     
     def solve(self):
         self.solver.Solve()
+        self.optimal_cost = self.cost_objective.Value()
         print(f"Best cost found: {self.cost_objective.Value()}")
         
     # Verify that the stock has not been exceeded for any supplier
@@ -359,11 +362,52 @@ class Task1():
         self.verify_production_capacity_not_exceeded()
         self.verify_material_requirements_satisfied()
 
+    def print_supplier_factory_material(self):
+        print()
+        print("Printing Supplier Factory Orders")
+        print('*' * len("Printing Supplier Factory Orders"))
+        for fact in self.factory_names:
+            print(fact)
+            print('-' * len(fact))
+            for supp in self.supplier_names:
+                out_str = f"    {supp} - "
+                for mat in self.material_names:
+                    value = self.var_sfm[supp][fact][mat].SolutionValue()
+                    if (0.0 != value):
+                        out_str = out_str + "    "
+                        temp = f"{mat:.15s}: {round(value,2):.2f}"
+                        out_str = out_str + f"{temp:23s}"
+                print(out_str)
+
+    def print_supplier_bill_for_each_factory(self):
+        print()
+        print("Printing supplier bill for factories")
+        print('*' * len("Printing supplier bill for factories"))
+        for fact in self.factory_names:
+            print(fact)
+            print('-' * len(fact))
+            for supp in self.supplier_names:
+                cost = 0.0
+                for mat in self.material_names:
+                    qty = self.var_sfm[supp][fact][mat].SolutionValue()
+                    mat_cost = get_element(self.raw_material_cost_df, supp, mat)
+                    shp_cost = get_element(self.raw_material_shipping_df,\
+                                                supp, fact)
+                    if qty >= EPSILON:
+                        cost = cost + (mat_cost + shp_cost) * qty
+                print(f"    - {supp:20s} : {round(cost, 2):.2f}")
+
+    def print_solution(self):
+        self.print_supplier_factory_material()
+        self.print_supplier_bill_for_each_factory()
+
 
 def t1_main()->None:
     t1 = Task1("./Assignment_DA_2_Task_1_data.xlsx")
     t1.solve()
     t1.verify_solution()
+    t1.print_solution()
+
     
 if "__main__" == __name__:
     t1_main()

@@ -4,7 +4,7 @@ import ortools
 import pandas as pd
 from ortools.linear_solver import pywraplp
 
-EPSILON = 0.001
+EPSILON = 0.000001
 
 def get_element(df:pd.DataFrame, rowname:str, colname:str):
     selector = df['Unnamed: 0'] == rowname

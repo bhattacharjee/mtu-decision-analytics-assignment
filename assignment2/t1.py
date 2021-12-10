@@ -365,6 +365,7 @@ class Task1():
         print()
         print("Printing Supplier Factory Orders")
         print('*' * len("Printing Supplier Factory Orders"))
+        print()
         for fact in self.factory_names:
             print(fact)
             print('-' * len(fact))
@@ -377,11 +378,13 @@ class Task1():
                         temp = f"{mat:.15s}: {round(value,2):05.2f}"
                         out_str = out_str + f"{temp:23s}"
                 print(out_str)
+            print()
 
     def print_supplier_bill_for_each_factory(self):
         print()
         print("Printing supplier bill for factories")
         print('*' * len("Printing supplier bill for factories"))
+        print()
         for fact in self.factory_names:
             print(fact)
             print('-' * len(fact))
@@ -395,11 +398,13 @@ class Task1():
                     if qty >= EPSILON:
                         cost = cost + (mat_cost + shp_cost) * qty
                 print(f"    - {supp:20s} : {round(cost, 2):10.2f}")
+            print()
 
     def print_units_and_cost_per_factory(self):
         print()
         print("Printing production and cost for each factory")
         print('*' * len("Printing production and cost for each factory"))
+        print()
         for fact in self.factory_names:
             print(fact)
             print('-' * len(fact))
@@ -423,6 +428,7 @@ class Task1():
                 if (prod_cost == float('inf')): prod_cost = 0
                 tot_cost = tot_cost + prod_qty * prod_cost
             print(f"    Total Manufacturing Cost = {round(tot_cost,2):05.2f}")
+            print()
 
     def print_customer_factory_units_ship_cost(self):
         # For each customer, determine how many units are being shipped
@@ -430,6 +436,7 @@ class Task1():
         print()
         print("Printing shipments for each customer")
         print('*' * len("Printing shipments for each customer"))
+        print()
         for cust in self.customer_names:
             ship_cost = 0.0
             print(cust)
@@ -449,8 +456,6 @@ class Task1():
             print(f"Total Shipping Cost: {round(ship_cost,2):5.2f}")
             print()
 
-        pass
-
     def print_solution(self):
         print(f"Best cost found: {self.optimal_cost:.2f}")
         self.print_supplier_factory_material()
@@ -458,7 +463,7 @@ class Task1():
         self.print_units_and_cost_per_factory()
         self.print_customer_factory_units_ship_cost()
 
-        # TODO: Start from Step L
+        # TODO: Start from Step N
 
 
 def t1_main()->None:

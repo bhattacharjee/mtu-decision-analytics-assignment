@@ -457,89 +457,48 @@ class Task1():
             print(f"Total Shipping Cost: {round(ship_cost,2):5.2f}")
             print()
 
-    def print_unit_product_cost_per_customer(self):
-        # For each customer, determine how many units are being shipped
-        # from each factory, also the total shipping cost per customer
-        def get_all_material_used_by_factory(fact):
-            # Get total quantities of each material used by a factory
-            out_dict = {}
-            for mat in self.material_names:
-                out_dict[mat] = 0.0
-                for supp in self.supplier_names:
-                    out_dict[mat] = out_dict[mat] +\
-                        self.var_sfm[supp][fact][mat].SolutionValue()
-            return out_dict
-
-        def get_all_material_for_customer_and_factory(customer, factory):
-            # Get total material of each material used by a factory to make
-            # products for a customer
-            out_dict = {m: 0.0 for m in self.material_names}
-            for prod in self.product_names:
-                qty = self.var_fcp[factory][customer][prod].SolutionValue()
-                for mat in self.material_names:
-                    mat_qty = get_element(self.product_requirements_df,\
-                                prod, mat)
-                    out_dict[mat] = out_dict[mat] + qty * mat_qty
-            return out_dict
-
-        def get_average_cost_of_material_for_factory(fact, mat):
-            # Each factory gets materials from different suppliers
-            # Each supplier offers at a different price
-            # This function returns the average price for a material
-            # for a factory
-            tot_cost = 0
-            tot_qty = 0
-            for supp in self.supplier_names:
-                qty = self.var_sfm[supp][fact][mat].SolutionValue()
-                if qty >= EPSILON:
-                    price_per_unit = \
-                        get_element(self.raw_material_shipping_df, supp, fact)\
-                        + get_element(self.raw_material_cost_df, supp, mat)
-                    tot_cost = tot_cost + (price_per_unit * qty)
-                    tot_qty = tot_qty + qty
+    def average_material_cost_for_factory(self, fact, mat):
+        """ What is the average price of a material for a factory, including
+            material shipping proce"""
+        tot_cost = 0.0
+        tot_qty = 0.0
+        for supp in self.supplier_names:
+            qty = self.var_sfm[supp][fact][mat].SolutionValue()
+            if qty >= EPSILON:
+                tot_qty += qty
+                mat_price = \
+                    get_element(self.raw_material_cost_df, supp, mat)
+                tot_cost += (mat_price * qty)
+                ship_price = \
+                    get_element(self.raw_material_shipping_df, supp, fact)
+                tot_cost += (ship_price * qty)
+        if tot_qty > 0.0:
             return tot_cost / tot_qty
+        else:
+            return 0
 
-        def get_unit_cost(fact, prod, cust, qty):
-            """Get the cost for a factory and customer for a qty of product"""
-            mat_requirements = {}
-            cost = 0.0
+    def average_product_cost_for_factory(self, fact, prod):
+        """ Average production cost for a product for each factory,
+            does not include shipping cost for the finished product"""
+        cost = 0.0
+        for mat in self.material_names:
+            qty = get_element(self.product_requirements_df, prod, mat)
+            if qty >= 0.0:
+                cost += (qty * \
+                    self.average_material_cost_for_factory(fact, mat))
+        return cost
 
-            for mat in self.material_names:
-                req = get_element(self.product_requirements_df, prod, mat)
-                price_mat_per_unit = \
-                    get_average_cost_of_material_for_factory(fact, mat)
-                cost = cost + (req * price_mat_per_unit * qty)
+    def shipping_cost_factory_customer(self, fact, cust):
+        return get_element(self.shipping_cost_df, fact, cust)
 
-                shipping_cost_per_unit = get_element(\
-                    self.shipping_cost_df, fact, cust)
-                cost = cost + qty * shipping_cost_per_unit
-
-            return cost / qty
-
-        def get_unit_cost_for_customer_product(cust, prod):
-            qty_acc = 0.0
-            cost_acc = 0.0
-
-            for fact in self.factory_names:
-                qty = self.var_fcp[fact][cust][prod].SolutionValue()
-                if qty >= EPSILON:
-                    qty_acc += qty
-                    unit_cost = get_unit_cost(fact, prod, cust, qty)
-                    cost = unit_cost * qty
-                    cost_acc += cost
-
-            if cost_acc > 0.0:
-                return cost_acc / qty_acc
-            else:
-                assert(qty_acc <= EPSILON)
-                return 0.0
-
-
+    def print_unit_product_cost_per_customer(self):
 
         print()
         print("Printing product unit cost per customer")
         print('*' * len("Printing product unit cost per customer"))
         print()
+
+        all_costs = 0.0
 
         for cust in self.customer_names:
             # 2D map for materials used
@@ -548,17 +507,22 @@ class Task1():
             print('-' * len(cust))
 
             for prod in self.product_names:
-                unit_cost = get_unit_cost_for_customer_product(cust, prod)
-                if (unit_cost != 0.0):
-                    out = f"    Product: {prod}    Unit Cost: {unit_cost:5.2f}"
-                    out = f"{out:45.45s}"
-                    qty = [self.var_fcp[fact][cust][prod].SolutionValue() for\
-                            fact in self.factory_names]
-                    qty = sum(qty)
-                    temp = f"     Quantity = {qty:.2f}"
-                    out = out + f"{temp:20.20s}"
-                    out = out + f"     Total = {qty * unit_cost:.2f}"
-                    print(out)
+                qty_acc = 0.0
+                cost_acc = 0.0
+
+                for fact in self.factory_names:
+                    qty = self.var_fcp[fact][cust][prod].SolutionValue()
+                    if qty >= EPSILON:
+                        cost = self.average_product_cost_for_factory(fact, prod)
+                        ship = self.shipping_cost_factory_customer(fact, cust)
+                        cost_acc += (cost * qty)
+                        cost_acc += (ship * qty)
+                        qty_acc += qty
+
+                print(cust, prod, qty, cost_acc/(qty_acc + (EPSILON * EPSILON)), cost_acc)
+                all_costs += cost_acc
+
+        print("Total_cost ", all_costs)
 
 
     def print_solution(self):

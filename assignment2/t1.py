@@ -59,6 +59,7 @@ class Task1():
                         pywraplp.Solver.GLOP_LINEAR_PROGRAMMING)
 
         self.cost_objective = self.solver.Objective()
+        self.cost_objective.SetMinimization()
 
         self.optimal_cost = float('nan')
 
@@ -490,15 +491,15 @@ class Task1():
             tot_qty = 0
             for supp in self.supplier_names:
                 qty = self.var_sfm[supp][fact][mat].SolutionValue()
-                price_per_unit = \
-                    get_element(self.raw_material_shipping_df, supp, fact) +\
-                    get_element(self.raw_materials_cost_df, supp, mat)
-                tot_cost = tot_cost + (price_per_unit * qty)
-                tot_qty = tot_qty + qty
+                if qty >= EPSILON:
+                    price_per_unit = \
+                        get_element(self.raw_material_shipping_df, supp, fact)\
+                        + get_element(self.raw_material_cost_df, supp, mat)
+                    tot_cost = tot_cost + (price_per_unit * qty)
+                    tot_qty = tot_qty + qty
             return tot_cost / tot_qty
 
         def get_unit_cost(fact, prod, cust, qty):
-            # Get the cost of a product made by 
             """Get the cost for a factory and customer for a qty of product"""
             mat_requirements = {}
             cost = 0.0
@@ -515,6 +516,25 @@ class Task1():
 
             return cost / qty
 
+        def get_unit_cost_for_customer_product(cust, prod):
+            qty_acc = 0.0
+            cost_acc = 0.0
+
+            for fact in self.factory_names:
+                qty = self.var_fcp[fact][cust][prod].SolutionValue()
+                if qty >= EPSILON:
+                    qty_acc += qty
+                    unit_cost = get_unit_cost(fact, prod, cust, qty)
+                    cost = unit_cost * qty
+                    cost_acc += cost
+
+            if cost_acc > 0.0:
+                return cost_acc / qty_acc
+            else:
+                assert(qty_acc <= EPSILON)
+                return 0.0
+
+
 
         print()
         print("Printing product unit cost per customer")
@@ -527,25 +547,19 @@ class Task1():
             print(cust)
             print('-' * len(cust))
 
-            mat_used = {f: {} for f in self.factory_names}
-            for fact in self.factory_names:
-                # Total amount of materials used by this factory
-                total_used = get_all_material_used_by_factory(fact)
+            for prod in self.product_names:
+                unit_cost = get_unit_cost_for_customer_product(cust, prod)
+                if (unit_cost != 0.0):
+                    out = f"    Product: {prod}    Unit Cost: {unit_cost:5.2f}"
+                    out = f"{out:45.45s}"
+                    qty = [self.var_fcp[fact][cust][prod].SolutionValue() for\
+                            fact in self.factory_names]
+                    qty = sum(qty)
+                    temp = f"     Quantity = {qty:.2f}"
+                    out = out + f"{temp:20.20s}"
+                    out = out + f"     Total = {qty * unit_cost:.2f}"
+                    print(out)
 
-                # Amount of material used by this factory for this customer
-                used_for_this_cust = \
-                    get_all_material_for_customer_and_factory(cust, fact)
-
-                out_str = f"{fact} :          "
-                for mat in self.material_names:
-                    if total_used[mat] > 0:
-                        fraction = used_for_this_cust[mat] / total_used[mat]
-                    else:
-                        fraction = 0.0
-                    fraction = round(fraction,2)
-                    out_str = out_str + f"{mat} : {fraction:5.2f}    "
-                print(out_str)
-            print()
 
     def print_solution(self):
         print(f"Best cost found: {self.optimal_cost:.2f}")

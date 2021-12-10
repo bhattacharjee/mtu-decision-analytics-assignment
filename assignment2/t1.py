@@ -510,8 +510,10 @@ class Task1():
                         out_str = out_str + f"    {fact:.15s} : "
                         out_str = out_str +f"{round(qty,2):5.2f}    "
                 print(out_str if out_str != "" else "\n")
+            print()
             print(f"Total Shipping Cost: {round(ship_cost,2):5.2f}")
             print()
+        print()
 
     @lru_cache(maxsize=128)
     def average_material_cost_for_factory(self, fact, mat):
@@ -600,6 +602,65 @@ class Task1():
 
         print("Total_cost ", all_costs, all_qty)
 
+
+    def get_factory_customer_material_fraction(self, fact, cust, mat):
+        # Determine for each customer the fraction of each material each
+        # factory has to order for manufacturing products delivered to that
+        # particular customer
+        
+        def get_total_factory_material():
+            total = 0.0
+            for supp in self.supplier_names:
+                value = self.var_sfm[supp][fact][mat].SolutionValue()
+                if value > 0.0 and value != float('inf') \
+                    and value != float('nan'):
+                    total += float(value)
+            return total
+
+        def get_product_material_requirements(prod):
+            value = get_element(self.product_requirements_df, prod, mat)
+            value = float(value)
+            if value == float('inf') or value == float('nan'):
+                value = 0.0
+            return value
+
+        def get_total_customer_material():
+            total = 0.0
+            for prod in self.product_names:
+                req_pu = get_product_material_requirements(prod)
+                req_pu = float(req_pu)
+                if req_pu == float('inf') or req_pu == float('nan'):
+                    req_pu = 0.0
+                qty = self.var_fcp[fact][cust][prod].SolutionValue()
+                qty = float(qty)
+                if qty == float('inf') or qty == float('nan'):
+                    qty = 0.0
+                total += (qty * req_pu)
+            return total
+                
+        total_mat = get_total_factory_material()
+        cust_mat = get_total_customer_material()
+        if total_mat == 0.0: assert(cust_mat == 0.0)
+        return cust_mat / total_mat if cust_mat > 0.0 else 0.0
+
+    def print_factory_customer_material_fraction(self):
+        print()
+        print("Printing what fraction of material is used for each customer")
+        print('*' * \
+            len("Printing what fraction of material is used for each customer"))
+        print()
+        for fact in self.factory_names:
+            print(f'{fact}')
+            print('-' * len(f'{fact}'))
+            for cust in self.customer_names:
+                outstr = "    -- "
+                outstr = outstr + f"{cust} :    "
+                for mat in self.material_names:
+                    frac = self.get_factory_customer_material_fraction(\
+                                fact, cust, mat)
+                    outstr = outstr + f"{mat} : {frac:5.2f}    "
+                print(outstr)
+
     def print_solution(self):
         print(f"Best cost found: {self.optimal_cost:.2f}")
         self.print_supplier_factory_material()
@@ -607,6 +668,7 @@ class Task1():
         self.print_units_and_cost_per_factory()
         self.print_customer_factory_units_ship_cost()
         self.print_unit_product_cost_per_customer()
+        self.print_factory_customer_material_fraction()
 
         # TODO: Start from Step N
 

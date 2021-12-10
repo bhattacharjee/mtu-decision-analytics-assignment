@@ -292,7 +292,6 @@ class Task1():
     def solve(self):
         self.solver.Solve()
         self.optimal_cost = self.cost_objective.Value()
-        print(f"Best cost found: {self.cost_objective.Value()}")
         
     # Verify that the stock has not been exceeded for any supplier
     def verify_supplier_stock_not_exceeded(self):
@@ -399,6 +398,7 @@ class Task1():
 
 
     def print_solution(self):
+        print(f"Best cost found: {self.optimal_cost:.2f}")
         self.print_supplier_factory_material()
         self.print_supplier_bill_for_each_factory()
         # TODO: Start from Step L

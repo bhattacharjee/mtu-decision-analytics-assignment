@@ -396,11 +396,68 @@ class Task1():
                         cost = cost + (mat_cost + shp_cost) * qty
                 print(f"    - {supp:20s} : {round(cost, 2):10.2f}")
 
+    def print_units_and_cost_per_factory(self):
+        print()
+        print("Printing production and cost for each factory")
+        print('*' * len("Printing production and cost for each factory"))
+        for fact in self.factory_names:
+            print(fact)
+            print('-' * len(fact))
+            tot_cost = 0.0
+            for prod in self.product_names:
+                prod_qty = 0.0
+
+                for cust in self.customer_names:
+                    prod_qty = prod_qty +\
+                        self.var_fcp[fact][cust][prod].SolutionValue()
+                print(f"        {prod:10s}: {round(prod_qty,2):15.2f}")
+                prod_cost = get_element(self.production_cost_df, prod, fact)
+
+                if (prod_cost == float('inf') and prod_qty != 0):
+                    # If a factory cannot produce an item, it's production
+                    # quantity should actually be zero
+                    assert(False)
+                # Now that we have verified that factories only produce
+                # items they can, we simplify the code by setting the
+                # production cost to 0
+                if (prod_cost == float('inf')): prod_cost = 0
+                tot_cost = tot_cost + prod_qty * prod_cost
+            print(f"    Total Manufacturing Cost = {round(tot_cost,2):05.2f}")
+
+    def print_customer_factory_units_ship_cost(self):
+        # For each customer, determine how many units are being shipped
+        # from each factory, also the total shipping cost per customer
+        print()
+        print("Printing shipments for each customer")
+        print('*' * len("Printing shipments for each customer"))
+        for cust in self.customer_names:
+            ship_cost = 0.0
+            print(cust)
+            print('-' * len(cust))
+            for prod in self.product_names:
+                out_str = ""
+                out_str = out_str + f"Product {prod:15s} "
+                for fact in self.factory_names:
+                    qty = self.var_fcp[fact][cust][prod].SolutionValue()
+                    if qty >= EPSILON:
+                        ship_cost_unit = get_element(self.shipping_cost_df,\
+                                                            fact, cust)
+                        ship_cost = ship_cost + (qty * ship_cost_unit)
+                        out_str = out_str + f"    {fact:.15s} : "
+                        out_str = out_str +f"{round(qty,2):5.2f}    "
+                print(out_str if out_str != "" else "\n")
+            print(f"Total Shipping Cost: {round(ship_cost,2):5.2f}")
+            print()
+
+        pass
 
     def print_solution(self):
         print(f"Best cost found: {self.optimal_cost:.2f}")
         self.print_supplier_factory_material()
         self.print_supplier_bill_for_each_factory()
+        self.print_units_and_cost_per_factory()
+        self.print_customer_factory_units_ship_cost()
+
         # TODO: Start from Step L
 
 

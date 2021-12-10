@@ -542,14 +542,22 @@ class Task1():
         if (capacity == 0):
             print(f"{fact} cannot produce {prod}")
             return 0
+
+        # Get the material cost for making this product (including shipping)
         for mat in self.material_names:
             qty = get_element(self.product_requirements_df, prod, mat)
             if qty >= 0.0:
                 cost += (qty * \
                     self.average_material_cost_for_factory(fact, mat))
-        #print(f"Production Cost: {fact} {prod}      = {cost}")
+
+        # Add the production cost
+        production_cost = get_element(self.production_cost_df, prod, fact)
+        if production_cost != float('inf') and production_cost != float('nan'):
+            cost += production_cost
+
         return cost
 
+    @lru_cache(maxsize=128)
     def shipping_cost_factory_customer(self, fact, cust):
         return get_element(self.shipping_cost_df, fact, cust)
 
@@ -582,7 +590,11 @@ class Task1():
                         cost_acc += (ship * qty)
                         qty_acc += qty
 
-                print(cust, prod, qty, cost_acc/(qty_acc + (EPSILON * EPSILON)), cost_acc)
+                avg_prod_cost = cost_acc / qty_acc if qty_acc > 0.0 else 0.0
+                if qty_acc == 0.0: assert(cost_acc == 0.0)
+                if qty_acc != 0.0:
+                    print(f"        {prod} : AVG COST: {avg_prod_cost:8.2f}")
+
                 all_costs += cost_acc
                 all_qty += qty_acc
 

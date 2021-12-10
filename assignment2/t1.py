@@ -491,7 +491,7 @@ class Task1():
             for supp in self.supplier_names:
                 qty = self.var_sfm[supp][fact][mat].SolutionValue()
                 price_per_unit = \
-                    get_element(self.raw_material_shipping_df, supp, fact) \+
+                    get_element(self.raw_material_shipping_df, supp, fact) +\
                     get_element(self.raw_materials_cost_df, supp, mat)
                 tot_cost = tot_cost + (price_per_unit * qty)
                 tot_qty = tot_qty + qty

@@ -600,6 +600,7 @@ class Task1():
                 all_costs += cost_acc
                 all_qty += qty_acc
 
+        print()
         print("Total_cost ", all_costs, all_qty)
 
 
@@ -669,8 +670,10 @@ class Task1():
         self.print_customer_factory_units_ship_cost()
         self.print_unit_product_cost_per_customer()
         self.print_factory_customer_material_fraction()
+        print()
+        print()
+        print(f"TOTAL COST = {self.optimal_cost:12.2f}")
 
-        # TODO: Start from Step N
 
     def main(self):
         self.solve()

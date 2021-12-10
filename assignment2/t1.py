@@ -600,7 +600,6 @@ class Task1():
 
         print("Total_cost ", all_costs, all_qty)
 
-
     def print_solution(self):
         print(f"Best cost found: {self.optimal_cost:.2f}")
         self.print_supplier_factory_material()
@@ -611,13 +610,11 @@ class Task1():
 
         # TODO: Start from Step N
 
-
-def t1_main()->None:
-    t1 = Task1("./Assignment_DA_2_Task_1_data.xlsx")
-    t1.solve()
-    t1.verify_solution()
-    t1.print_solution()
+    def main(self):
+        self.solve()
+        self.verify_solution()
+        self.print_solution()
 
     
 if "__main__" == __name__:
-    t1_main()
+    Task1("./Assignment_DA_2_Task_1_data.xlsx").main()

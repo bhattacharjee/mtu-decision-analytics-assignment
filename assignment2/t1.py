@@ -456,12 +456,104 @@ class Task1():
             print(f"Total Shipping Cost: {round(ship_cost,2):5.2f}")
             print()
 
+    def print_unit_product_cost_per_customer(self):
+        # For each customer, determine how many units are being shipped
+        # from each factory, also the total shipping cost per customer
+        def get_all_material_used_by_factory(fact):
+            # Get total quantities of each material used by a factory
+            out_dict = {}
+            for mat in self.material_names:
+                out_dict[mat] = 0.0
+                for supp in self.supplier_names:
+                    out_dict[mat] = out_dict[mat] +\
+                        self.var_sfm[supp][fact][mat].SolutionValue()
+            return out_dict
+
+        def get_all_material_for_customer_and_factory(customer, factory):
+            # Get total material of each material used by a factory to make
+            # products for a customer
+            out_dict = {m: 0.0 for m in self.material_names}
+            for prod in self.product_names:
+                qty = self.var_fcp[factory][customer][prod].SolutionValue()
+                for mat in self.material_names:
+                    mat_qty = get_element(self.product_requirements_df,\
+                                prod, mat)
+                    out_dict[mat] = out_dict[mat] + qty * mat_qty
+            return out_dict
+
+        def get_average_cost_of_material_for_factory(fact, mat):
+            # Each factory gets materials from different suppliers
+            # Each supplier offers at a different price
+            # This function returns the average price for a material
+            # for a factory
+            tot_cost = 0
+            tot_qty = 0
+            for supp in self.supplier_names:
+                qty = self.var_sfm[supp][fact][mat].SolutionValue()
+                price_per_unit = \
+                    get_element(self.raw_material_shipping_df, supp, fact) \+
+                    get_element(self.raw_materials_cost_df, supp, mat)
+                tot_cost = tot_cost + (price_per_unit * qty)
+                tot_qty = tot_qty + qty
+            return tot_cost / tot_qty
+
+        def get_unit_cost(fact, prod, cust, qty):
+            # Get the cost of a product made by 
+            """Get the cost for a factory and customer for a qty of product"""
+            mat_requirements = {}
+            cost = 0.0
+
+            for mat in self.material_names:
+                req = get_element(self.product_requirements_df, prod, mat)
+                price_mat_per_unit = \
+                    get_average_cost_of_material_for_factory(fact, mat)
+                cost = cost + (req * price_mat_per_unit * qty)
+
+                shipping_cost_per_unit = get_element(\
+                    self.shipping_cost_df, fact, cust)
+                cost = cost + qty * shipping_cost_per_unit
+
+            return cost / qty
+
+
+        print()
+        print("Printing product unit cost per customer")
+        print('*' * len("Printing product unit cost per customer"))
+        print()
+
+        for cust in self.customer_names:
+            # 2D map for materials used
+            # mat_used[factory][material] = <qty used for this customer>
+            print(cust)
+            print('-' * len(cust))
+
+            mat_used = {f: {} for f in self.factory_names}
+            for fact in self.factory_names:
+                # Total amount of materials used by this factory
+                total_used = get_all_material_used_by_factory(fact)
+
+                # Amount of material used by this factory for this customer
+                used_for_this_cust = \
+                    get_all_material_for_customer_and_factory(cust, fact)
+
+                out_str = f"{fact} :          "
+                for mat in self.material_names:
+                    if total_used[mat] > 0:
+                        fraction = used_for_this_cust[mat] / total_used[mat]
+                    else:
+                        fraction = 0.0
+                    fraction = round(fraction,2)
+                    out_str = out_str + f"{mat} : {fraction:5.2f}    "
+                print(out_str)
+            print()
+
     def print_solution(self):
         print(f"Best cost found: {self.optimal_cost:.2f}")
         self.print_supplier_factory_material()
         self.print_supplier_bill_for_each_factory()
         self.print_units_and_cost_per_factory()
         self.print_customer_factory_units_ship_cost()
+        self.print_unit_product_cost_per_customer()
 
         # TODO: Start from Step N
 

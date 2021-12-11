@@ -234,7 +234,7 @@ class TrainCapacity(TrainBase):
         stations = [y for (x, y) in stations]
         return stations
 
-    def pair_stations(self, line:str, downstream=False)->list:
+    def station_pairs(self, line:str, downstream=False)->list:
         # Given a line with a list of stations [A, B, C, D]
         # Return a set of pairs [(A, B), (B, C), (C, D)]
         stations = self.get_line_stations(line)
@@ -248,5 +248,5 @@ if "__main__" == __name__:
     dist, path = ShortestPath("Assignment_DA_2_Task_3_data.xlsx", 'A', 'P')\
         .get_shortest_path()
     t = TrainCapacity('Assignment_DA_2_Task_3_data.xlsx')
-    print(stations := t.pair_stations('L1'))
+    print(stations := t.station_pairs('L1'))
 

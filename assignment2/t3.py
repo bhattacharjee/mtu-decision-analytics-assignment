@@ -143,6 +143,7 @@ class ShortestPath(TrainBase):
         distdf = self.distance_df.copy()
         maxdistance = get_sum_of_defined_vars(distdf)
         maxdistance *= maxdistance
+        maxdistance *= maxdistance
         self.replace_nans(distdf, maxdistance)
         for st1 in self.stop_names:
             for st2 in self.stop_names:
@@ -155,11 +156,13 @@ class ShortestPath(TrainBase):
         # outgoing edge, there must be an incoming edge
 
         def constrain(stopname):
+            if stopname in [self.source, self.destination]:
+                return
+
             constraint = self.solver.Constraint(0, 0)
             # Incoming into that node
             for st in self.stop_names:
-                if st != stopname and \
-                        st!= self.source and st != self.destination:
+                if st != stopname:
                     var = self.edge[st][stopname]
                     constraint.SetCoefficient(var, 1)
                     var = self.edge[stopname][st]

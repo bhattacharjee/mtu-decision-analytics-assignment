@@ -38,7 +38,7 @@ class ShortestPath(TrainBase):
     def __init__(self, excel_file_name, source, destination):
         super().__init__(excel_file_name)
 
-        self.source = self.stop_names[0]
+        self.source = 'C'
         self.destination = self.stop_names[-1]
 
         self.solver = pywraplp.Solver(\
@@ -49,10 +49,16 @@ class ShortestPath(TrainBase):
 
         self.set_source_destination_true()
 
+        self.cannot_retrace_path()
+
+        self.add_condition_for_intermediate_stops()
+
         # Objective is to minimize the distance between two points
         self.objective = self.solver.Objective()
         self.set_objective_coefficients()
         self.objective.SetMinimization()
+
+
 
 
     def create_edges(self):
@@ -85,24 +91,53 @@ class ShortestPath(TrainBase):
 
         return outer
 
+    def cannot_retrace_path(self):
+        # If we take A->B then we cannot take B->A
+        # This also takes care of dead ends
+        for st1 in self.stop_names:
+            for st2 in self.stop_names:
+                if st1 != st2:
+                    constraint = self.solver.Constraint(0, 1)
+                    var_front = self.edge[st1][st2]
+                    var_back = self.edge[st2][st1]
+                    constraint.SetCoefficient(var_front, 1)
+                    constraint.SetCoefficient(var_back, 1)
+
     def set_source_destination_true(self):
         """ Set the source and destination station as taken """
 
         # source
         # It should be connected to exactly one station
-        constraint = self.solver.Constraint(1, 1)
+        constraint = self.solver.Constraint(1, self.solver.infinity())
         for st in self.stop_names:
             if st != self.source:
                 var = self.edge[self.source][st]
                 constraint.SetCoefficient(var, 1)
 
-        # destination
-        # It should be connected to exactly one station
-        constraint = self.solver.Constraint(1, 1)
+        # source
+        # It cannot have incoming nodes
+        constraint = self.solver.Constraint(0, 0)
         for st in self.stop_names:
-            if st != self.destination:
+            if st != self.source:
                 var = self.edge[st][self.source]
                 constraint.SetCoefficient(var, 1)
+
+        # destination
+        # It should be connected to exactly one station
+        constraint = self.solver.Constraint(1, self.solver.infinity())
+        for st in self.stop_names:
+            if st != self.destination:
+                var = self.edge[st][self.destination]
+                constraint.SetCoefficient(var, 1)
+
+        # destination
+        # It cannot have outgoing nodes
+        constraint = self.solver.Constraint(0, 0)
+        for st in self.stop_names:
+            if st != self.destination:
+                var = self.edge[self.destination][st]
+                constraint.SetCoefficient(var, 1)
+
 
     def set_objective_coefficients(self):
         distdf = self.distance_df.copy()
@@ -114,6 +149,25 @@ class ShortestPath(TrainBase):
                 dist = get_element(distdf, st1, st2)
                 var = self.edge[st1][st2]
                 self.objective.SetCoefficient(var, dist)
+
+    def add_condition_for_intermediate_stops(self):
+        # For intermediate stops, add a condition that if there is an
+        # outgoing edge, there must be an incoming edge
+
+        def constrain(stopname):
+            constraint = self.solver.Constraint(0, 0)
+            # Incoming into that node
+            for st in self.stop_names:
+                if st != stopname and \
+                        st!= self.source and st != self.destination:
+                    var = self.edge[st][stopname]
+                    constraint.SetCoefficient(var, 1)
+                    var = self.edge[stopname][st]
+                    constraint.SetCoefficient(var, -1)
+        
+        for stopname in self.stop_names:
+            constrain(stopname)
+
 
     def get_shortest_path(self):
         self.solver.Solve()

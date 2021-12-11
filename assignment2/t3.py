@@ -4,6 +4,7 @@ import ortools
 import pandas as pd
 from ortools.linear_solver import pywraplp
 from functools import lru_cache
+import math
 
 def get_element(df:pd.DataFrame, rowname:str, colname:str):
     selector = df['Unnamed: 0'] == rowname
@@ -26,7 +27,6 @@ class TrainBase:
         self.line_names = [str(l) for l in self.stop_df.columns][1:]
         self.stop_names = [str(s) for s in self.distance_df.columns][1:]
 
-
     def read_csv(self, sheet_name:str)->pd.DataFrame:
         df = pd.read_excel(self.excel_file_name, sheet_name=sheet_name)
         return df
@@ -38,8 +38,8 @@ class ShortestPath(TrainBase):
     def __init__(self, excel_file_name, source, destination):
         super().__init__(excel_file_name)
 
-        self.source = 'C'
-        self.destination = self.stop_names[-1]
+        self.source = source
+        self.destination = destination
 
         self.solver = pywraplp.Solver(\
                         'LPWrapper',\
@@ -140,6 +140,8 @@ class ShortestPath(TrainBase):
 
 
     def set_objective_coefficients(self):
+        # Set the coefficients of the objective. For every path that is taken
+        # the weight is the same as the distance taken in the excel sheet
         distdf = self.distance_df.copy()
         maxdistance = get_sum_of_defined_vars(distdf)
         maxdistance *= maxdistance
@@ -171,19 +173,81 @@ class ShortestPath(TrainBase):
         for stopname in self.stop_names:
             constrain(stopname)
 
+    def get_next_node(self, node):
+        # Given a node, return the next node in the path
+        for n in self.stop_names:
+            if self.edge[node][n].SolutionValue() == 1:
+                return n
+        assert(False) # Should never reach here
 
+    def get_path(self, source, destination):
+        # Returns [nodestart, node1, ..., nodeend]
+        current_node = source
+        next_node = None
+        ret = []
+
+        while next_node != destination:
+            if next_node == None:
+                ret.append(current_node)
+            else:
+                current_node = next_node
+            next_node = self.get_next_node(current_node)
+            ret.append(next_node)
+
+        return ret
+            
     def get_shortest_path(self):
+        # Returns distance, [nodestart, node1, node2, ..., nodeend]
         self.solver.Solve()
-        for st1 in self.stop_names:
-            for st2 in self.stop_names:
-                var = self.edge[st1][st2]
-                if var.SolutionValue() == 1:
-                    print(f"{st1} ---> {st2}    {get_element(self.distance_df, st1, st2)}")
-        print("Minimum distance ", self.objective.Value())
+        return self.objective.Value(), \
+            self.get_path(self.source, self.destination)
 
+class TrainCapacity(TrainBase):
+    def __init__(self, excel_file_name):
+        super().__init__(excel_file_name)
+
+        # This is a 2D array which specifies how many people travel
+        # between every pair of directly connected stations
+        # If stations are not directly connected, this should be zero
+        self.capacity_required = self.initialize_capacity_required()
+
+    def initialize_capacity_required(self):
+        outer = {}
+        for s1 in self.stop_names:
+            inner = {s: 0.0 for s in self.stop_names}
+            outer[s1] = inner
+        return outer
+
+    def get_line_stations(self, line):
+        # Get all the stations in a line in order, as a list
+        stations = []
+        for s in self.stop_names:
+            order = get_element(self.stop_df, s, line)
+            if not math.isnan(order):
+                stations.append((order, s,))
+        stations = sorted(stations)
+        stations = [y for (x, y) in stations]
+        return stations
+
+
+    def pair_stations(self, line:str, downstream=False)->list:
+        # Given a line with a list of stations [A, B, C, D]
+        # Return a set of pairs [(A, B), (B, C), (C, D)]
+        stations = self.get_line_stations(line)
+        if downstream:
+            stations = stations[::-1]
+        ret = []
+        for i in range(len(stations) - 1):
+                ret.append((stations[i], stations[i + 1],))
+        return ret
+    
 
 if "__main__" == __name__:
     #Task3("Assignment_DA_2_Task_3_data.xlsx").main()
-    ShortestPath("Assignment_DA_2_Task_3_data.xlsx", None, None).get_shortest_path()
+    dist, path = ShortestPath("Assignment_DA_2_Task_3_data.xlsx", 'A', 'P')\
+        .get_shortest_path()
+    print(dist, path)
+    t = TrainCapacity('Assignment_DA_2_Task_3_data.xlsx')
+    print(stations := t.get_line_stations('L1'))
 
     pass

@@ -38,11 +38,21 @@ class ShortestPath(TrainBase):
     def __init__(self, excel_file_name, source, destination):
         super().__init__(excel_file_name)
 
+        self.source = self.stop_names[0]
+        self.destination = self.stop_names[-1]
+
         self.solver = pywraplp.Solver(\
                         'LPWrapper',\
                         pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING)
 
-        self.create_edges()
+        self.edge = self.create_edges()
+
+        self.set_source_destination_true()
+
+        # Objective is to minimize the distance between two points
+        self.objective = self.solver.Objective()
+        self.set_objective_coefficients()
+        self.objective.SetMinimization()
 
 
     def create_edges(self):
@@ -68,16 +78,55 @@ class ShortestPath(TrainBase):
 
         for st1 in self.stop_names:
             for st2 in self.stop_names:
-                if float('nan') == get_element(self.distance_df, st1, st2)
+                if float('nan') == get_element(self.distance_df, st1, st2):
                     var = outer[st1][st2]
                     constraint = self.solver.Constraint(0, 0)
                     constraint.SetCoefficient(var, 1)
 
         return outer
 
+    def set_source_destination_true(self):
+        """ Set the source and destination station as taken """
+
+        # source
+        # It should be connected to exactly one station
+        constraint = self.solver.Constraint(1, 1)
+        for st in self.stop_names:
+            if st != self.source:
+                var = self.edge[self.source][st]
+                constraint.SetCoefficient(var, 1)
+
+        # destination
+        # It should be connected to exactly one station
+        constraint = self.solver.Constraint(1, 1)
+        for st in self.stop_names:
+            if st != self.destination:
+                var = self.edge[st][self.source]
+                constraint.SetCoefficient(var, 1)
+
+    def set_objective_coefficients(self):
+        distdf = self.distance_df.copy()
+        maxdistance = get_sum_of_defined_vars(distdf)
+        maxdistance *= maxdistance
+        self.replace_nans(distdf, maxdistance)
+        for st1 in self.stop_names:
+            for st2 in self.stop_names:
+                dist = get_element(distdf, st1, st2)
+                var = self.edge[st1][st2]
+                self.objective.SetCoefficient(var, dist)
+
+    def get_shortest_path(self):
+        self.solver.Solve()
+        for st1 in self.stop_names:
+            for st2 in self.stop_names:
+                var = self.edge[st1][st2]
+                if var.SolutionValue() == 1:
+                    print(f"{st1} ---> {st2}    {get_element(self.distance_df, st1, st2)}")
+        print("Minimum distance ", self.objective.Value())
+
 
 if "__main__" == __name__:
     #Task3("Assignment_DA_2_Task_3_data.xlsx").main()
-    ShortestPath("Assignment_DA_2_Task_3_data.xlsx", None, None)
+    ShortestPath("Assignment_DA_2_Task_3_data.xlsx", None, None).get_shortest_path()
 
     pass

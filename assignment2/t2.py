@@ -114,15 +114,14 @@ class Task2:
                     cons.SetCoefficient(self.var_order[i], -1)
                     cons.SetCoefficient(self.var_order[j], 1)
 
+    def get_next_city(self, start):
+        for c2 in self.city_names:
+            if 1 == self.var_edges[start][c2].SolutionValue():
+                dist = get_element(self.distances_df, start, c2)
+                return c2, dist
+        assert(False) # Should not reach here
 
     def print_route(self):
-        def get_next_city(start):
-            for c2 in self.city_names:
-                if 1 == self.var_edges[start][c2].SolutionValue():
-                    dist = get_element(self.distances_df, start, c2)
-                    return c2, dist
-            assert(False) # Should not reach here
-
         next_city = None
         current_city = self.start_city_name
         
@@ -132,8 +131,8 @@ class Task2:
             n += 1
             if next_city != None:
                 current_city = next_city
-            next_city, dist = get_next_city(current_city)
-            print(f"{n:>2d}. {current_city:>10s} ---> "\
+            next_city, dist = self.get_next_city(current_city)
+            print(f"{n:>3d}. {current_city:>10s} ---> "\
                 + f"{next_city:10s} -- {dist:>10d}")
 
     def set_objective_coefficients(self):
@@ -147,10 +146,30 @@ class Task2:
         self.solver.Solve()
         self.optimal_distance = self.objective.Value()
 
+    def validate_solution(self):
+        visited = [False for city in self.city_names]
+        visited[self.start_city_ind] = True
+        next_city = None
+        current_city = self.start_city_name
+        dist_accumulator = 0.0
+
+        while self.start_city_name != next_city:
+            if next_city != None:
+                current_city = next_city
+            next_city, dist = self.get_next_city(current_city)
+            dist_accumulator += dist
+            next_city_index = self.city_numbers[next_city]
+            visited[next_city_index] = True
+
+        assert(all(visited))
+        assert(dist_accumulator == self.optimal_distance)
+
 
     def main(self):
         self.solve()
+        self.validate_solution()
         self.print_route()
+        print()
         print(f"Optimal distance: {self.optimal_distance}")
 
 

@@ -11,8 +11,9 @@ def get_element(df:pd.DataFrame, rowname:str, colname:str):
     return df[colname].to_numpy()[0]
 
 class Task2:
-    def __init__(self, excel_file_name):
+    def __init__(self, excel_file_name, start_city_name):
         self.excel_file_name = excel_file_name
+        self.start_city_name = start_city_name
 
         self.distances_df = self.read_excel("Distances")
 
@@ -25,6 +26,11 @@ class Task2:
 
         # Map from city to its position in the dataframe
         self.city_numbers = {c: n for n, c in enumerate(self.city_names)}
+
+        self.num_cities = len(self.city_names)
+
+        # Index of the starting city, this will be helpful later
+        self.start_city_ind = self.city_numbers[self.start_city_name]
 
         # Create a 2-D array of variables. 
         # if x[i][j] = True then there is an ege from city[i] to city[j]
@@ -47,6 +53,8 @@ class Task2:
 
         self.create_constraints_no_loops_to_same_city()
 
+        self.create_constraint_no_complete_subroutes()
+
 
     def read_excel(self, sheet_name:str):
         df = pd.read_excel(self.excel_file_name, sheet_name=sheet_name)
@@ -63,8 +71,8 @@ class Task2:
         return outer
 
     def create_order_variables(self):
-        pass
-
+        return [self.solver.IntVar(1, len(self.city_names), f"{n}-{c}") \
+            for n, c in enumerate(self.city_names)]
 
     def create_constraint_all_towns_visited_only_once(self):
         for c1 in self.city_names:
@@ -83,6 +91,30 @@ class Task2:
             constraint = self.solver.Constraint(0, 0)
             constraint.SetCoefficient(var, 1)
 
+    def create_constraint_no_complete_subroutes(self):
+        # There should be no complete sub-routes.
+        # This will be achieved by self.var_order
+        # Each city is given a number in the order in which it is visited
+        # There cannot be an edge from a city later in the route to a
+        # city earlier in the route, except for the first and last city
+        
+        # order of first city is 1
+        constraint = self.solver.Constraint(1, 1)
+        constraint.SetCoefficient(self.var_order[self.start_city_ind], 1)
+
+        for i in range(self.num_cities):
+            for j in range(self.num_cities):
+                if i != self.start_city_ind and j != self.start_city_ind:
+                    cons = self.solver.Constraint(\
+                        2 - self.num_cities, self.solver.infinity())
+                    c1_name = self.city_names[i]
+                    c2_name = self.city_names[j]
+                    var_edge = self.var_edges[c1_name][c2_name]
+                    cons.SetCoefficient(var_edge, 1 - self.num_cities)
+                    cons.SetCoefficient(self.var_order[i], -1)
+                    cons.SetCoefficient(self.var_order[j], 1)
+
+
     def print_route(self):
         def get_next_city(start):
             for c2 in self.city_names:
@@ -92,13 +124,17 @@ class Task2:
             assert(False) # Should not reach here
 
         next_city = None
-        current_city = "Cork"
+        current_city = self.start_city_name
+        
+        n = 0
 
-        while "Cork" != next_city:
+        while self.start_city_name != next_city:
+            n += 1
             if next_city != None:
                 current_city = next_city
             next_city, dist = get_next_city(current_city)
-            print(f"{current_city:>10s} ---> {next_city:10s} -- {dist:>10d}")
+            print(f"{n:>2d}. {current_city:>10s} ---> "\
+                + f"{next_city:10s} -- {dist:>10d}")
 
     def set_objective_coefficients(self):
         for c1 in self.city_names:
@@ -113,11 +149,10 @@ class Task2:
 
 
     def main(self):
-        print(self.distances_df)
         self.solve()
         self.print_route()
         print(f"Optimal distance: {self.optimal_distance}")
 
 
 if "__main__" == __name__:
-    Task2("./Assignment_DA_2_Task_2_data.xlsx").main()
+    Task2("./Assignment_DA_2_Task_2_data.xlsx", "Cork").main()

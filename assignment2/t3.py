@@ -14,6 +14,11 @@ def get_element(df:pd.DataFrame, rowname:str, colname:str):
 def get_sum_of_defined_vars(df):
     return df.sum(axis=1, skipna=True).sum(skipna=True)
 
+def pair_array(arr:list)->list:
+    # Given an array [1, 2, 3, 4]
+    # Return an array of pairs [(1,2), (2, 3), (3,4)]
+    return [(arr[i], arr[i+1],) for i in range(len(arr) - 1)]
+
 class TrainBase:
     def __init__(self, excel_file_name):
         self.excel_file_name = excel_file_name
@@ -229,25 +234,19 @@ class TrainCapacity(TrainBase):
         stations = [y for (x, y) in stations]
         return stations
 
-
     def pair_stations(self, line:str, downstream=False)->list:
         # Given a line with a list of stations [A, B, C, D]
         # Return a set of pairs [(A, B), (B, C), (C, D)]
         stations = self.get_line_stations(line)
         if downstream:
             stations = stations[::-1]
-        ret = []
-        for i in range(len(stations) - 1):
-                ret.append((stations[i], stations[i + 1],))
-        return ret
+        return pair_array(stations)
     
 
 if "__main__" == __name__:
     #Task3("Assignment_DA_2_Task_3_data.xlsx").main()
     dist, path = ShortestPath("Assignment_DA_2_Task_3_data.xlsx", 'A', 'P')\
         .get_shortest_path()
-    print(dist, path)
     t = TrainCapacity('Assignment_DA_2_Task_3_data.xlsx')
-    print(stations := t.get_line_stations('L1'))
+    print(stations := t.pair_stations('L1'))
 
-    pass

@@ -36,6 +36,7 @@ class TrainBase:
         self.line_names = [str(l) for l in self.stop_df.columns][1:]
         self.stop_names = [str(s) for s in self.distance_df.columns][1:]
 
+
     def read_csv(self, sheet_name:str)->pd.DataFrame:
         df = pd.read_excel(self.excel_file_name, sheet_name=sheet_name)
         return df
@@ -43,6 +44,7 @@ class TrainBase:
     def replace_nans(self, df:pd.DataFrame, newValue:int):
         df.replace(float('nan'), float(newValue), inplace=True)
 
+    @lru_cache(maxsize=128)
     def get_line_stations(self, line):
         # Get all the stations in a line in order, as a list
         stations = []
@@ -53,6 +55,17 @@ class TrainBase:
         stations = sorted(stations)
         stations = [y for (x, y) in stations]
         return stations
+
+    @lru_cache(maxsize=128)
+    def is_line_circular(self, line):
+        route = self.get_line_stations(line)
+        first, last = route[0], route[-1]
+        d1 = get_element(self.distance_df, first, last)
+        d2 = get_element(self.distance_df, last, first)
+        if not math.isnan(d1) and not math.isnan(d2):
+            return True
+        else:
+            return False
 
 class ShortestPath(TrainBase):
     def __init__(self, excel_file_name, source, destination):
@@ -290,7 +303,7 @@ class TrainCapacity(TrainBase):
         stations = self.get_line_stations(line)
         if downstream:
             stations = stations[::-1]
-        return pair_array(stations)
+        return pair_array(stations, self.is_line_circular(line))
     
     def add_requirements(self, source, destination):
         # For a source and destination, find the number of passengers

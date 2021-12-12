@@ -5,6 +5,7 @@ import pandas as pd
 from ortools.linear_solver import pywraplp
 from functools import lru_cache
 import math
+from tqdm import tqdm
 
 def get_element(df:pd.DataFrame, rowname:str, colname:str):
     selector = df['Unnamed: 0'] == rowname
@@ -214,9 +215,25 @@ class TrainCapacity(TrainBase):
         # This is a 2D array which specifies how many people travel
         # between every pair of directly connected stations
         # If stations are not directly connected, this should be zero
-        self.capacity_required = self.initialize_capacity_required()
+        self.capacity_required = self.initialize_capacity_matrix()
 
-    def initialize_capacity_required(self):
+        # We will treat upstream and downstream capacity separately
+        # This will give some added flexibility rather than just 
+        # assuming that trains upstream and downstream are the same
+        self.line_capacity_per_train_up = []
+        for line in self.line_names:
+            self.line_capacity_per_train_up.append(\
+                self.initialize_capacity_matrix())
+
+        self.line_capacity_per_train_down = []
+        for line in self.line_names:
+            self.line_capacity_per_train_down.append(\
+                self.initialize_capacity_matrix())
+
+        self.add_all_requirements()
+
+
+    def initialize_capacity_matrix(self):
         outer = {}
         for s1 in self.stop_names:
             inner = {s: 0.0 for s in self.stop_names}
@@ -242,6 +259,26 @@ class TrainCapacity(TrainBase):
             stations = stations[::-1]
         return pair_array(stations)
     
+    def add_requirements(self, source, destination):
+        # For a source and destination, find the number of passengers
+        # traveling. Calculate the shortest path, and add the same
+        # number of passengers to each leg of the route
+        if source == destination:
+            return
+
+        req = get_element(self.passenger_df, source, destination)
+        dist, route = ShortestPath(self.excel_file_name, source, destination)\
+                        .get_shortest_path()
+        route = pair_array(route)
+        for x, y in route:
+            self.capacity_required[x][y] += req
+
+    def add_all_requirements(self):
+        # Add the requirements for each pair of adjacent stations
+        description = "Calculating shortest distance between pairs of stops"
+        pairs = [(s1, s2,) for s1 in self.stop_names for s2 in self.stop_names]
+        for s1, s2 in tqdm(pairs, desc=description):
+            self.add_requirements(s1, s2)
 
 if "__main__" == __name__:
     #Task3("Assignment_DA_2_Task_3_data.xlsx").main()

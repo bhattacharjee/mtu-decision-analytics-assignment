@@ -227,9 +227,9 @@ class TrainCapacity(TrainBase):
         self.var_downstream_trains = {}
         for line in self.line_names:
             self.var_upstream_trains[line] = self.solver.IntVar(\
-                            0, self.solver.infinity(), f"n_trains({line})")
+                            0, self.solver.infinity(), f"n_trains_up({line})")
             self.var_downstream_trains[line] = self.solver.IntVar(\
-                            0, self.solver.infinity(), f"n_trains({line})")
+                            0, self.solver.infinity(), f"n_trains_dn({line})")
 
         self.objective = self.solver.Objective()
         for line in self.line_names:
@@ -253,11 +253,13 @@ class TrainCapacity(TrainBase):
         for line in self.line_names:
             self.fill_line_capacity_per_train(line)
 
-        #self.add_all_requirements()
+        self.add_all_requirements()
 
         # Add a constraint that each leg has enough capacity
         # to handle its traffic
         self.add_constraints_no_leg_overloads()
+
+        self.solve()
 
 
     def initialize_capacity_matrix(self):
@@ -320,21 +322,38 @@ class TrainCapacity(TrainBase):
         def constrain(source, dest):
             req = self.capacity_required[source][dest]
             cons = self.solver.Constraint(req, self.solver.infinity())
+            debugstr = f"constrain({source},{dest})  : {req} <= 0 "
+            acc = 0.0
             for line in self.line_names:
 
                 capacity = self.line_capacity_per_train_up[line][source][dest]
+                c1 = capacity
                 var = self.var_upstream_trains[line]
                 cons.SetCoefficient(var, float(capacity))
+                debugstr = debugstr + f"+ ({capacity} * {var})"
+                acc += capacity
 
                 capacity = self.line_capacity_per_train_down[line][source][dest]
+                c2 = capacity
                 var = self.var_downstream_trains[line]
                 cons.SetCoefficient(var, float(capacity))
+                debugstr = debugstr + f"+ ({capacity} * {var})"
+                acc += capacity
+
+            debugstr = debugstr + f") <= infinity"
+            if req > 0 and acc == 0.0:
+                print(debugstr)
+
 
 
         for s1 in self.stop_names:
             for s2 in self.stop_names:
-                constrain(s1, s2)
+                if s1 != s2:
+                    constrain(s1, s2)
 
+    def solve(self):
+        self.solver.Solve()
+        print(f"Minimum number of trains running = : {self.objective.Value()}")
 
 
 if "__main__" == __name__:

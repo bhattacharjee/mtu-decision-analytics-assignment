@@ -316,7 +316,6 @@ class TrainCapacity(TrainBase):
 
         self.constrain_upstream_downstream_same()
 
-        self.solve()
 
 
     def initialize_capacity_matrix(self):
@@ -476,6 +475,7 @@ class TrainCapacity(TrainBase):
             
 
     def main(self):
+        self.solve()
         self.print_solution()
 
 

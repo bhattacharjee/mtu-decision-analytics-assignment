@@ -184,18 +184,20 @@ class ShortestPath(TrainBase):
                 var = self.edge[self.destination][st]
                 constraint.SetCoefficient(var, 1)
 
+    @lru_cache(maxsize=128)
+    def get_max_size(self):
+        return get_sum_of_defined_vars(self.distance_df)
 
     def set_objective_coefficients(self):
         # Set the coefficients of the objective. For every path that is taken
         # the weight is the same as the distance taken in the excel sheet
-        distdf = self.distance_df.copy()
-        maxdistance = get_sum_of_defined_vars(distdf)
+        maxdistance = self.get_max_size()
         maxdistance *= maxdistance
-        maxdistance *= maxdistance
-        self.replace_nans(distdf, maxdistance)
         for st1 in self.stop_names:
             for st2 in self.stop_names:
-                dist = get_element(distdf, st1, st2)
+                dist = get_element(self.distance_df, st1, st2)
+                if math.isnan(dist):
+                    dist = maxdistance
                 var = self.edge[st1][st2]
                 self.objective.SetCoefficient(var, int(dist))
 
@@ -305,8 +307,7 @@ class TrainCapacity(TrainBase):
     def initialize_capacity_matrix(self):
         outer = {}
         for s1 in self.stop_names:
-            inner = {s: 0.0 for s in self.stop_names}
-            outer[s1] = inner
+            outer[s1] = {s: 0 for s in self.stop_names}
         return outer
 
     def add_requirements(self, source, destination):
@@ -315,7 +316,6 @@ class TrainCapacity(TrainBase):
         # number of passengers to each leg of the route
         if source == destination:
             return
-
         req = get_element(self.passenger_df, source, destination)
         dist, route = ShortestPath(self.excel_file_name, source, destination)\
                         .get_shortest_path()
@@ -332,33 +332,28 @@ class TrainCapacity(TrainBase):
 
     def fill_line_capacity_per_train(self, line:str):
         capacity = get_element(self.train_capacity_df, line, 'Capacity')
-        
         for x, y in self.station_pairs(line):
             self.line_capacity_per_train_up[line][x][y] = capacity
         for x, y in self.station_pairs(line, downstream=True):
             self.line_capacity_per_train_down[line][x][y] = capacity
 
     def add_constraints_no_leg_overloads(self):
-        
         def constrain(source, dest):
             req = self.capacity_required[source][dest]
             cons = self.solver.Constraint(int(req), self.solver.infinity())
             # debugstr = f"constrain({source},{dest})  : {req} <= 0 "
             # acc = 0.0
             for line in self.line_names:
-
                 capacity = self.line_capacity_per_train_up[line][source][dest]
                 var = self.var_upstream_trains[line]
                 cons.SetCoefficient(var, int(capacity))
                 # debugstr = debugstr + f"+ ({capacity} * {var})"
                 # acc += capacity
-
                 capacity = self.line_capacity_per_train_down[line][source][dest]
                 var = self.var_downstream_trains[line]
                 cons.SetCoefficient(var, int(capacity))
                 # debugstr = debugstr + f"+ ({capacity} * {var})"
                 # acc += capacity
-
             # debugstr = debugstr + f") <= infinity"
             # if req > 0 and acc == 0.0:
             #    print(debugstr)
@@ -371,13 +366,19 @@ class TrainCapacity(TrainBase):
         self.solver.Solve()
         print(f"Minimum number of trains running = : {self.objective.Value()}")
 
+    def print_solution(self):
+        for line in self.line_names:
+            up = self.var_upstream_trains[line].SolutionValue()
+            down = self.var_downstream_trains[line].SolutionValue()
+            print(f"Line {line}: Upstream: {int(up):>5d} " + \
+                        f"Downstream: {int(down):>5d}")
+    def main(self):
+        self.solve()
+        self.print_solution()
+
 
 if "__main__" == __name__:
-    #Task3("Assignment_DA_2_Task_3_data.xlsx").main()
-    print(pair_array([1, 2, 3, 4], is_circular=True))
-    print(pair_array([1, 2, 3, 4][::-1], is_circular=True))
-    dist, path = ShortestPath("Assignment_DA_2_Task_3_data.xlsx", 'A', 'P')\
-        .get_shortest_path()
-    t = TrainCapacity('Assignment_DA_2_Task_3_data.xlsx')
-    print(stations := t.station_pairs('L1'))
+    # dist, path = ShortestPath("Assignment_DA_2_Task_3_data.xlsx", 'A', 'P')\
+    #    .get_shortest_path()
+    TrainCapacity('Assignment_DA_2_Task_3_data.xlsx').main()
 

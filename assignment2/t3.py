@@ -15,10 +15,13 @@ def get_element(df:pd.DataFrame, rowname:str, colname:str):
 def get_sum_of_defined_vars(df):
     return df.sum(axis=1, skipna=True).sum(skipna=True)
 
-def pair_array(arr:list)->list:
+def pair_array(arr:list, is_circular=False)->list:
     # Given an array [1, 2, 3, 4]
     # Return an array of pairs [(1,2), (2, 3), (3,4)]
-    return [(arr[i], arr[i+1],) for i in range(len(arr) - 1)]
+    ret = [(arr[i], arr[i+1],) for i in range(len(arr) - 1)]
+    if is_circular and len(arr) >= 2:
+        ret.append((arr[-1], arr[0],))
+    return ret
 
 class TrainBase:
     def __init__(self, excel_file_name):
@@ -39,6 +42,17 @@ class TrainBase:
 
     def replace_nans(self, df:pd.DataFrame, newValue:int):
         df.replace(float('nan'), float(newValue), inplace=True)
+
+    def get_line_stations(self, line):
+        # Get all the stations in a line in order, as a list
+        stations = []
+        for s in self.stop_names:
+            order = get_element(self.stop_df, s, line)
+            if not math.isnan(order):
+                stations.append((order, s,))
+        stations = sorted(stations)
+        stations = [y for (x, y) in stations]
+        return stations
 
 class ShortestPath(TrainBase):
     def __init__(self, excel_file_name, source, destination):
@@ -269,16 +283,6 @@ class TrainCapacity(TrainBase):
             outer[s1] = inner
         return outer
 
-    def get_line_stations(self, line):
-        # Get all the stations in a line in order, as a list
-        stations = []
-        for s in self.stop_names:
-            order = get_element(self.stop_df, s, line)
-            if not math.isnan(order):
-                stations.append((order, s,))
-        stations = sorted(stations)
-        stations = [y for (x, y) in stations]
-        return stations
 
     def station_pairs(self, line:str, downstream=False)->list:
         # Given a line with a list of stations [A, B, C, D]
@@ -344,8 +348,6 @@ class TrainCapacity(TrainBase):
             if req > 0 and acc == 0.0:
                 print(debugstr)
 
-
-
         for s1 in self.stop_names:
             for s2 in self.stop_names:
                 if s1 != s2:
@@ -358,6 +360,8 @@ class TrainCapacity(TrainBase):
 
 if "__main__" == __name__:
     #Task3("Assignment_DA_2_Task_3_data.xlsx").main()
+    print(pair_array([1, 2, 3, 4], is_circular=True))
+    print(pair_array([1, 2, 3, 4][::-1], is_circular=True))
     dist, path = ShortestPath("Assignment_DA_2_Task_3_data.xlsx", 'A', 'P')\
         .get_shortest_path()
     t = TrainCapacity('Assignment_DA_2_Task_3_data.xlsx')

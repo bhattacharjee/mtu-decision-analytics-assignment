@@ -220,17 +220,21 @@ class TrainCapacity(TrainBase):
         # We will treat upstream and downstream capacity separately
         # This will give some added flexibility rather than just 
         # assuming that trains upstream and downstream are the same
-        self.line_capacity_per_train_up = []
+        self.line_capacity_per_train_up = {}
         for line in self.line_names:
-            self.line_capacity_per_train_up.append(\
-                self.initialize_capacity_matrix())
+            self.line_capacity_per_train_up[line] = \
+                self.initialize_capacity_matrix()
 
-        self.line_capacity_per_train_down = []
+        self.line_capacity_per_train_down = {}
         for line in self.line_names:
-            self.line_capacity_per_train_down.append(\
-                self.initialize_capacity_matrix())
+            self.line_capacity_per_train_down[line] = \
+                self.initialize_capacity_matrix()
 
-        self.add_all_requirements()
+        for line in self.line_names:
+            self.fill_line_capacity_per_train(line)
+
+        #self.add_all_requirements()
+
 
 
     def initialize_capacity_matrix(self):
@@ -279,6 +283,14 @@ class TrainCapacity(TrainBase):
         pairs = [(s1, s2,) for s1 in self.stop_names for s2 in self.stop_names]
         for s1, s2 in tqdm(pairs, desc=description):
             self.add_requirements(s1, s2)
+
+    def fill_line_capacity_per_train(self, line:str):
+        capacity = get_element(self.train_capacity_df, line, 'Capacity')
+        
+        for x, y in self.station_pairs(line):
+            self.line_capacity_per_train_up[line][x][y] = capacity
+        for x, y in self.station_pairs(line, downstream=True):
+            self.line_capacity_per_train_down[line][x][y] = capacity
 
 if "__main__" == __name__:
     #Task3("Assignment_DA_2_Task_3_data.xlsx").main()

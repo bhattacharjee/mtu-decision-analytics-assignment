@@ -5,7 +5,10 @@ import pandas as pd
 from ortools.linear_solver import pywraplp
 from functools import lru_cache
 import math
-from tqdm import tqdm
+try:
+    from tqdm import tqdm
+except:
+    tqdm = lambda x, desc: x
 
 def get_element(df:pd.DataFrame, rowname:str, colname:str):
     selector = df['Unnamed: 0'] == rowname

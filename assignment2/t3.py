@@ -276,18 +276,20 @@ class TrainCapacity(TrainBase):
 
 
         # Variable: Number of trains for each line, upstream and downstream
-        self.var_upstream_trains = {}
-        self.var_downstream_trains = {}
+        self.var_upstream_trains_per_hour = {}
+        self.var_downstream_trains_per_hour = {}
         for line in self.line_names:
-            self.var_upstream_trains[line] = self.solver.IntVar(\
+            self.var_upstream_trains_per_hour[line] = self.solver.IntVar(\
                             0, self.solver.infinity(), f"n_trains_up({line})")
-            self.var_downstream_trains[line] = self.solver.IntVar(\
+            self.var_downstream_trains_per_hour[line] = self.solver.IntVar(\
                             0, self.solver.infinity(), f"n_trains_dn({line})")
 
         self.objective = self.solver.Objective()
         for line in self.line_names:
-            self.objective.SetCoefficient(self.var_upstream_trains[line], 1)
-            self.objective.SetCoefficient(self.var_downstream_trains[line], 1)
+            self.objective.SetCoefficient(\
+                self.var_upstream_trains_per_hour[line], 1)
+            self.objective.SetCoefficient(\
+                self.var_downstream_trains_per_hour[line], 1)
         self.objective.SetMinimization()
 
         # We will treat upstream and downstream capacity separately
@@ -311,6 +313,8 @@ class TrainCapacity(TrainBase):
         # Add a constraint that each leg has enough capacity
         # to handle its traffic
         self.add_constraints_no_leg_overloads()
+
+        self.constrain_upstream_downstream_same()
 
         self.solve()
 
@@ -356,12 +360,12 @@ class TrainCapacity(TrainBase):
             # acc = 0.0
             for line in self.line_names:
                 capacity = self.line_capacity_per_train_up[line][source][dest]
-                var = self.var_upstream_trains[line]
+                var = self.var_upstream_trains_per_hour[line]
                 cons.SetCoefficient(var, int(capacity))
                 # debugstr = debugstr + f"+ ({capacity} * {var})"
                 # acc += capacity
                 capacity = self.line_capacity_per_train_down[line][source][dest]
-                var = self.var_downstream_trains[line]
+                var = self.var_downstream_trains_per_hour[line]
                 cons.SetCoefficient(var, int(capacity))
                 # debugstr = debugstr + f"+ ({capacity} * {var})"
                 # acc += capacity
@@ -376,6 +380,21 @@ class TrainCapacity(TrainBase):
     def solve(self):
         self.solver.Solve()
 
+    def constrain_upstream_downstream_same(self):
+        # For non-circular routes, upstream requirement is the same as
+        # downstream requirement since the same trains shuttle back and forth
+        print()
+        print("****")
+        print("For non-circular lines, forcing same number of upstream and "\
+            + " downstream trains")
+        for line in self.line_names:
+            if not self.is_line_circular(line):
+                cons = self.solver.Constraint(0, 0)
+                down = self.var_downstream_trains_per_hour[line]
+                up = self.var_upstream_trains_per_hour[line]
+                cons.SetCoefficient(up, 1)
+                cons.SetCoefficient(down, -1)
+
     def print_solution(self):
         print()
         print('-' * 80)
@@ -386,14 +405,14 @@ class TrainCapacity(TrainBase):
         print()
 
         for line in self.line_names:
-            up = self.var_upstream_trains[line].SolutionValue()
-            down = self.var_downstream_trains[line].SolutionValue()
+            up = self.var_upstream_trains_per_hour[line].SolutionValue()
+            down = self.var_downstream_trains_per_hour[line].SolutionValue()
             print(f"Line {line}: Upstream: {int(up):>5d} " + \
                         f"Downstream: {int(down):>5d}")
         ntrains = 0
         for line in self.line_names:
-            up = self.var_upstream_trains[line].SolutionValue()
-            down = self.var_downstream_trains[line].SolutionValue()
+            up = self.var_upstream_trains_per_hour[line].SolutionValue()
+            down = self.var_downstream_trains_per_hour[line].SolutionValue()
             if not self.is_line_circular(line):
                 up = max(up, down)
                 down = up
@@ -410,8 +429,8 @@ class TrainCapacity(TrainBase):
         print()
 
         for line in self.line_names:
-            up = self.var_upstream_trains[line].SolutionValue()
-            down = self.var_downstream_trains[line].SolutionValue()
+            up = self.var_upstream_trains_per_hour[line].SolutionValue()
+            down = self.var_downstream_trains_per_hour[line].SolutionValue()
             if not self.is_line_circular(line):
                 up = max(up, down)
                 down= up
@@ -426,13 +445,15 @@ class TrainCapacity(TrainBase):
         print("trains required will be smaller. Next we take this into ")
         print("consideration, and the total end-to-end distance of each line.")
 
+        print()
         for l in self.line_names:
-            print(f"Length of line {l} is {self.get_total_line_distance(l)}")
+            print(f"Length of line {l} is {self.get_total_line_distance(l)} "\
+                + " minutes")
         print()
         ntrains = 0
         for line in self.line_names:
-            up = self.var_upstream_trains[line].SolutionValue()
-            down = self.var_downstream_trains[line].SolutionValue()
+            up = self.var_upstream_trains_per_hour[line].SolutionValue()
+            down = self.var_downstream_trains_per_hour[line].SolutionValue()
             if not self.is_line_circular(line):
                 up = max(up, down)
                 down = up
@@ -445,7 +466,7 @@ class TrainCapacity(TrainBase):
                 upreq = math.ceil(up * round_trip_time / 60.0)
                 downreq = math.ceil(down * round_trip_time / 60.0)
                 print(f"Line {line} - Upstream Trains Required: {upreq} " +\
-                    f"Downstream Trains required: {downreq}")
+                    f"        Downstream Trains required: {downreq}")
                 ntrains += upreq
                 ntrains += downreq
         print()

@@ -193,7 +193,7 @@ class ShortestPath(TrainBase):
             for st2 in self.stop_names:
                 dist = get_element(distdf, st1, st2)
                 var = self.edge[st1][st2]
-                self.objective.SetCoefficient(var, dist)
+                self.objective.SetCoefficient(var, int(dist))
 
     def add_condition_for_intermediate_stops(self):
         # For intermediate stops, add a condition that if there is an
@@ -338,33 +338,30 @@ class TrainCapacity(TrainBase):
         
         def constrain(source, dest):
             req = self.capacity_required[source][dest]
-            cons = self.solver.Constraint(req, self.solver.infinity())
-            debugstr = f"constrain({source},{dest})  : {req} <= 0 "
-            acc = 0.0
+            cons = self.solver.Constraint(int(req), self.solver.infinity())
+            # debugstr = f"constrain({source},{dest})  : {req} <= 0 "
+            # acc = 0.0
             for line in self.line_names:
 
                 capacity = self.line_capacity_per_train_up[line][source][dest]
-                c1 = capacity
                 var = self.var_upstream_trains[line]
-                cons.SetCoefficient(var, float(capacity))
-                debugstr = debugstr + f"+ ({capacity} * {var})"
-                acc += capacity
+                cons.SetCoefficient(var, int(capacity))
+                # debugstr = debugstr + f"+ ({capacity} * {var})"
+                # acc += capacity
 
                 capacity = self.line_capacity_per_train_down[line][source][dest]
-                c2 = capacity
                 var = self.var_downstream_trains[line]
-                cons.SetCoefficient(var, float(capacity))
-                debugstr = debugstr + f"+ ({capacity} * {var})"
-                acc += capacity
+                cons.SetCoefficient(var, int(capacity))
+                # debugstr = debugstr + f"+ ({capacity} * {var})"
+                # acc += capacity
 
-            debugstr = debugstr + f") <= infinity"
-            if req > 0 and acc == 0.0:
-                print(debugstr)
+            # debugstr = debugstr + f") <= infinity"
+            # if req > 0 and acc == 0.0:
+            #    print(debugstr)
 
         for s1 in self.stop_names:
             for s2 in self.stop_names:
-                if s1 != s2:
-                    constrain(s1, s2)
+                constrain(s1, s2)
 
     def solve(self):
         self.solver.Solve()

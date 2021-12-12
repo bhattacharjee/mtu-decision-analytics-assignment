@@ -321,7 +321,7 @@ class TrainCapacity(TrainBase):
 
     def add_all_requirements(self):
         # Add the requirements for each pair of adjacent stations
-        description = "Calculating shortest distance between pairs of stops"
+        description = "Finding shortest paths"
         pairs = [(s1, s2,) for s1 in self.stop_names for s2 in self.stop_names]
         for s1, s2 in tqdm(pairs, desc=description):
             self.add_requirements(s1, s2)

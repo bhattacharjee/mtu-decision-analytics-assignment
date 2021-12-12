@@ -67,6 +67,7 @@ class TrainBase:
         else:
             return False
 
+    @lru_cache(maxsize=128)
     def station_pairs(self, line:str, downstream=False)->list:
         # Given a line with a list of stations [A, B, C, D]
         # Return a set of pairs [(A, B), (B, C), (C, D)]

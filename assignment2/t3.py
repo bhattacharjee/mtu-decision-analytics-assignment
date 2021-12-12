@@ -217,6 +217,26 @@ class TrainCapacity(TrainBase):
         # If stations are not directly connected, this should be zero
         self.capacity_required = self.initialize_capacity_matrix()
 
+        self.solver = pywraplp.Solver(\
+                        'LPWrapper',\
+                        pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING)
+
+
+        # Variable: Number of trains for each line, upstream and downstream
+        self.var_upstream_trains = {}
+        self.var_downstream_trains = {}
+        for line in self.line_names:
+            self.var_upstream_trains[line] = self.solver.IntVar(\
+                            0, self.solver.infinity(), f"n_trains({line})")
+            self.var_downstream_trains[line] = self.solver.IntVar(\
+                            0, self.solver.infinity(), f"n_trains({line})")
+
+        self.objective = self.solver.Objective()
+        for line in self.line_names:
+            self.objective.SetCoefficient(self.var_upstream_trains[line], 1)
+            self.objective.SetCoefficient(self.var_downstream_trains[line], 1)
+        self.objective.SetMinimization()
+
         # We will treat upstream and downstream capacity separately
         # This will give some added flexibility rather than just 
         # assuming that trains upstream and downstream are the same
@@ -235,6 +255,9 @@ class TrainCapacity(TrainBase):
 
         #self.add_all_requirements()
 
+        # Add a constraint that each leg has enough capacity
+        # to handle its traffic
+        self.add_constraints_no_leg_overloads()
 
 
     def initialize_capacity_matrix(self):
@@ -291,6 +314,28 @@ class TrainCapacity(TrainBase):
             self.line_capacity_per_train_up[line][x][y] = capacity
         for x, y in self.station_pairs(line, downstream=True):
             self.line_capacity_per_train_down[line][x][y] = capacity
+
+    def add_constraints_no_leg_overloads(self):
+        
+        def constrain(source, dest):
+            req = self.capacity_required[source][dest]
+            cons = self.solver.Constraint(req, self.solver.infinity())
+            for line in self.line_names:
+
+                capacity = self.line_capacity_per_train_up[line][source][dest]
+                var = self.var_upstream_trains[line]
+                cons.SetCoefficient(var, float(capacity))
+
+                capacity = self.line_capacity_per_train_down[line][source][dest]
+                var = self.var_downstream_trains[line]
+                cons.SetCoefficient(var, float(capacity))
+
+
+        for s1 in self.stop_names:
+            for s2 in self.stop_names:
+                constrain(s1, s2)
+
+
 
 if "__main__" == __name__:
     #Task3("Assignment_DA_2_Task_3_data.xlsx").main()

@@ -5,6 +5,8 @@ import ortools
 from ortools.linear_solver import pywraplp
 from functools import lru_cache
 
+FULL_TSP = False
+
 def get_element(df:pd.DataFrame, rowname:str, colname:str):
     selector = df['Unnamed: 0'] == rowname
     df = df[selector]
@@ -16,6 +18,13 @@ class Task2:
         self.start_city_name = start_city_name
 
         self.distances_df = self.read_excel("Distances")
+
+        self.cities_must_visit = \
+            ["Dublin", "Limerick", "Waterford", "Galway", "Wexford", \
+            "Belfast", "Athlone", "Rosslare", "Wicklow"]
+
+        if start_city_name not in self.cities_must_visit:
+            self.cities_must_visit.append(start_city_name)
 
         self.solver = pywraplp.Solver(\
                         'LPWrapper',\
@@ -49,11 +58,17 @@ class Task2:
 
         self.set_objective_coefficients()
 
-        self.create_constraint_all_towns_visited_only_once()
+        if FULL_TSP:
+            self.create_constraint_all_towns_visited_only_once()
+        else:
+            self.create_constraint_all_towns_visited_max_once()
 
         self.create_constraints_no_loops_to_same_city()
 
         self.create_constraint_no_complete_subroutes()
+
+        if not FULL_TSP:
+            self.create_constraint_must_visit_cities()
 
 
     def read_excel(self, sheet_name:str):
@@ -75,6 +90,8 @@ class Task2:
             for n, c in enumerate(self.city_names)]
 
     def create_constraint_all_towns_visited_only_once(self):
+        # This function is unused by default, it is useful 
+        # in the full TSP version of the problem (off by default)
         for c1 in self.city_names:
             cons1 = self.solver.Constraint(1, 1)
             cons2 = self.solver.Constraint(1, 1)
@@ -83,6 +100,37 @@ class Task2:
                 cons1.SetCoefficient(var1, 1)
                 var2 = self.var_edges[c2][c1]
                 cons2.SetCoefficient(var2, 1)
+
+    def create_constraint_all_towns_visited_max_once(self):
+        for c1 in self.city_names:
+            cons1 = self.solver.Constraint(0, 1)
+            cons2 = self.solver.Constraint(0, 1)
+            for c2 in self.city_names:
+                var1 = self.var_edges[c1][c2]
+                cons1.SetCoefficient(var1, 1)
+                var2 = self.var_edges[c2][c1]
+                cons2.SetCoefficient(var2, 1)
+
+        # A town entered must also be exited
+        for c1 in self.city_names:
+            cons = self.solver.Constraint(0, 0)
+            for c2 in self.city_names:
+                var1 = self.var_edges[c1][c2]
+                cons.SetCoefficient(var1, -1)
+                var2 = self.var_edges[c2][c1]
+                cons.SetCoefficient(var2, 1)
+
+    def create_constraint_must_visit_cities(self):
+        # Every city in the must-visit list must be visited
+        for city in self.cities_must_visit:
+            cons1 = self.solver.Constraint(1, self.solver.infinity())
+            cons2 = self.solver.Constraint(1, self.solver.infinity())
+            for c2 in self.city_names:
+                if c2 != city:
+                    var1 = self.var_edges[city][c2]
+                    cons1.SetCoefficient(var1, 1)
+                    var2 = self.var_edges[c2][city]
+                    cons2.SetCoefficient(var2, 1)
 
     def create_constraints_no_loops_to_same_city(self):
         # No zero length loops from same city to itself
@@ -146,7 +194,7 @@ class Task2:
         self.solver.Solve()
         self.optimal_distance = self.objective.Value()
 
-    def validate_solution(self):
+    def validate_solution_full_tsp(self):
         visited = [False for city in self.city_names]
         visited[self.start_city_ind] = True
         next_city = None
@@ -164,10 +212,41 @@ class Task2:
         assert(all(visited))
         assert(dist_accumulator == self.optimal_distance)
 
+    def validate_solution(self):
+        visited = []
+        visited.append(self.start_city_name)
+        next_city = None
+        current_city = self.start_city_name
+        dist_accumulator = 0.0
+
+        while self.start_city_name != next_city:
+            if next_city != None:
+                current_city = next_city
+            next_city, dist = self.get_next_city(current_city)
+            dist_accumulator += dist
+            next_city_index = self.city_numbers[next_city]
+            if next_city != self.start_city_name:
+                visited.append(next_city)
+
+        assert(len(visited) == len(self.cities_must_visit))
+        assert(dist_accumulator == self.optimal_distance)
+        for city in self.cities_must_visit:
+            assert(city in visited)
+
+    def print_all_variables(self):
+        for c1 in self.city_names:
+            for c2 in self.city_names:
+                val = self.var_edges[c1][c2].SolutionValue() 
+                if val != 0:
+                    print(f"edge({c1}, {c2}) = {val}")
 
     def main(self):
         self.solve()
-        self.validate_solution()
+        # self.print_all_variables()
+        if FULL_TSP:
+            self.validate_solution_full_tsp()
+        else:
+            self.validate_solution()
         self.print_route()
         print()
         print(f"Optimal distance: {self.optimal_distance}")

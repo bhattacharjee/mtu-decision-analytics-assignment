@@ -80,6 +80,15 @@ class TrainBase:
         if downstream:
             stations = stations[::-1]
         return pair_array(stations, self.is_line_circular(line))
+
+    @lru_cache(maxsize=128)
+    def get_total_line_distance(self, line:str)->list:
+        stations = self.get_line_stations(line)
+        stations = pair_array(stations, self.is_line_circular(line))
+        total = 0
+        for x, y in stations:
+            total += get_element(self.distance_df, x, y)
+        return total
     
 
 class ShortestPath(TrainBase):
@@ -369,8 +378,11 @@ class TrainCapacity(TrainBase):
 
     def print_solution(self):
         print()
+        print('-' * 80)
+        print()
         print("If upstream and downstream may have different number of trains:")
-        print(f"    Number of trains required = : {self.objective.Value()}")
+        print(f"    Number of trains required (per hour) = " \
+            + f": {self.objective.Value()}")
         print()
 
         for line in self.line_names:
@@ -387,11 +399,14 @@ class TrainCapacity(TrainBase):
                 down = up
             ntrains += up
             ntrains += down
+
+        print('-' * 80)
+
         print()
         print("Circular routes can have different number of rains clockwise ")
         print("and anticlockwise")
         print("If upstream and downstream have the same number of trains:")
-        print(f"    Number of trains required = {ntrains}")
+        print(f"    Number of trains required (per hour) = {ntrains}")
         print()
 
         for line in self.line_names:
@@ -403,6 +418,42 @@ class TrainCapacity(TrainBase):
             print(f"Line {line}: Upstream: {int(up):>5d} " + \
                         f"Downstream: {int(down):>5d}")
 
+        print('-' * 80)
+
+        print()
+        print("The above didn't take into consideration that trains can return")
+        print("after they have reached the destination. So total number of ")
+        print("trains required will be smaller. Next we take this into ")
+        print("consideration, and the total end-to-end distance of each line.")
+
+        for l in self.line_names:
+            print(f"Length of line {l} is {self.get_total_line_distance(l)}")
+        print()
+        ntrains = 0
+        for line in self.line_names:
+            up = self.var_upstream_trains[line].SolutionValue()
+            down = self.var_downstream_trains[line].SolutionValue()
+            if not self.is_line_circular(line):
+                up = max(up, down)
+                down = up
+                round_trip_time = self.get_total_line_distance(line) * 2
+                req = math.ceil(up * round_trip_time / 60.0)
+                print(f"Line {line} -          Trains required: {req}")
+                ntrains += req
+            else:
+                round_trip_time = self.get_total_line_distance(line)
+                upreq = math.ceil(up * round_trip_time / 60.0)
+                downreq = math.ceil(down * round_trip_time / 60.0)
+                print(f"Line {line} - Upstream Trains Required: {upreq} " +\
+                    f"Downstream Trains required: {downreq}")
+                ntrains += upreq
+                ntrains += downreq
+        print()
+        print(f"Total number of trains required: {ntrains}")
+
+
+            
+
     def main(self):
         self.print_solution()
 
@@ -410,5 +461,8 @@ class TrainCapacity(TrainBase):
 if "__main__" == __name__:
     # dist, path = ShortestPath("Assignment_DA_2_Task_3_data.xlsx", 'A', 'P')\
     #    .get_shortest_path()
+    # x = ShortestPath("Assignment_DA_2_Task_3_data.xlsx", "A", "B")
+    # for i in ['L1', 'L2', 'L3', 'L4']:
+    #    print(i, x.get_total_line_distance(i))
     TrainCapacity('Assignment_DA_2_Task_3_data.xlsx').main()
 

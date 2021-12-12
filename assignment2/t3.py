@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 import ortools
 import pandas as pd
 from ortools.linear_solver import pywraplp
@@ -364,16 +366,44 @@ class TrainCapacity(TrainBase):
 
     def solve(self):
         self.solver.Solve()
-        print(f"Minimum number of trains running = : {self.objective.Value()}")
 
     def print_solution(self):
+        print()
+        print("If upstream and downstream may have different number of trains:")
+        print(f"    Number of trains required = : {self.objective.Value()}")
+        print()
+
         for line in self.line_names:
             up = self.var_upstream_trains[line].SolutionValue()
             down = self.var_downstream_trains[line].SolutionValue()
             print(f"Line {line}: Upstream: {int(up):>5d} " + \
                         f"Downstream: {int(down):>5d}")
+        ntrains = 0
+        for line in self.line_names:
+            up = self.var_upstream_trains[line].SolutionValue()
+            down = self.var_downstream_trains[line].SolutionValue()
+            if not self.is_line_circular(line):
+                up = max(up, down)
+                down = up
+            ntrains += up
+            ntrains += down
+        print()
+        print("Circular routes can have different number of rains clockwise ")
+        print("and anticlockwise")
+        print("If upstream and downstream have the same number of trains:")
+        print(f"    Number of trains required = {ntrains}")
+        print()
+
+        for line in self.line_names:
+            up = self.var_upstream_trains[line].SolutionValue()
+            down = self.var_downstream_trains[line].SolutionValue()
+            if not self.is_line_circular(line):
+                up = max(up, down)
+                down= up
+            print(f"Line {line}: Upstream: {int(up):>5d} " + \
+                        f"Downstream: {int(down):>5d}")
+
     def main(self):
-        self.solve()
         self.print_solution()
 
 

@@ -67,6 +67,15 @@ class TrainBase:
         else:
             return False
 
+    def station_pairs(self, line:str, downstream=False)->list:
+        # Given a line with a list of stations [A, B, C, D]
+        # Return a set of pairs [(A, B), (B, C), (C, D)]
+        stations = self.get_line_stations(line)
+        if downstream:
+            stations = stations[::-1]
+        return pair_array(stations, self.is_line_circular(line))
+    
+
 class ShortestPath(TrainBase):
     def __init__(self, excel_file_name, source, destination):
         super().__init__(excel_file_name)
@@ -296,15 +305,6 @@ class TrainCapacity(TrainBase):
             outer[s1] = inner
         return outer
 
-
-    def station_pairs(self, line:str, downstream=False)->list:
-        # Given a line with a list of stations [A, B, C, D]
-        # Return a set of pairs [(A, B), (B, C), (C, D)]
-        stations = self.get_line_stations(line)
-        if downstream:
-            stations = stations[::-1]
-        return pair_array(stations, self.is_line_circular(line))
-    
     def add_requirements(self, source, destination):
         # For a source and destination, find the number of passengers
         # traveling. Calculate the shortest path, and add the same

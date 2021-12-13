@@ -478,16 +478,16 @@ class TrainCapacity(TrainBase):
     def print_solution(self):
         self.solve()
 
-        print(f"Total number of trains required: {self.objective.Value()}")
         for line in self.line_names:
+            uptrains = self.var_trains_on_line_up[line].SolutionValue()
+            downtrains = self.var_trains_on_line_down[line].SolutionValue()
             if self.is_line_circular(line):
-                uptrains = self.var_trains_on_line_up[line].SolutionValue()
-                downtrains = self.var_trains_on_line_down[line].SolutionValue()
                 print(f"{line}:    UP: {uptrains}    DOWN: {downtrains}")
             else:
-                uptrains = self.var_trains_on_line_up[line].SolutionValue()
-                downtrains = self.var_trains_on_line_down[line].SolutionValue()
-                print(f"{line}:    UP: {uptrains}    DOWN: {downtrains}")
+                print(f"{line}:    UP: {uptrains}")
+        print()
+        print(f"Total number of trains required: {self.objective.Value()}")
+        print()
 
     def main(self):
         self.solve()

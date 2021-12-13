@@ -8,6 +8,7 @@ from ortools.linear_solver import pywraplp
 from functools import lru_cache
 import math
 import numpy as np
+import random
 
 try:
     from tqdm import tqdm
@@ -293,6 +294,7 @@ class TrainCapacity(TrainBase):
                         'LPWrapper',\
                         pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING)
 
+        self.shortest_path_samples = list()
 
         # Variable: frequency of trains required on each line (per hour)
         self.var_upstream_trains_per_hour = {}
@@ -408,6 +410,17 @@ class TrainCapacity(TrainBase):
             outer[s1] = {s: 0 for s in self.stop_names}
         return outer
 
+    def save_shortest_path(self, source, destination, dist, route):
+        if random.random() <= 0.9:
+            return
+        t = (source, destination, dist, route,)
+        self.shortest_path_samples.append(t)
+
+    def print_shortest_paths(self):
+        for source, destination, dist, route in self.shortest_path_samples:
+            print(f"DISTANCE({source} --> {destination}) = {int(dist):>3d}" +\
+                    f"           {route}")
+
     def add_requirements(self, source, destination):
         # For a source and destination, find the number of passengers
         # traveling. Calculate the shortest path, and add the same
@@ -417,6 +430,7 @@ class TrainCapacity(TrainBase):
         req = int(get_element(self.passenger_df, source, destination))
         dist, route = ShortestPath(self.excel_file_name, source, destination)\
                         .get_shortest_path()
+        self.save_shortest_path(source, destination, dist, route)
         route = pair_array(route)
         for x, y in route:
             self.capacity_required[x][y] += req
@@ -491,7 +505,17 @@ class TrainCapacity(TrainBase):
 
     def main(self):
         self.solve()
+        print()
+        print("Printing a sample of shortest paths calculated between stations")
+        print("---------------------------------------------------------------")
+        print()
+        self.print_shortest_paths()
+        print()
+        print("Printing number of trains needed")
+        print("--------------------------------")
+        print()
         self.print_solution()
+        print()
 
 
 if "__main__" == __name__:

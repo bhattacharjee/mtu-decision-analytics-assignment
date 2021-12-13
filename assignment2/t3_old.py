@@ -90,15 +90,7 @@ class TrainBase:
         total = 0
         for x, y in stations:
             total += get_element(self.distance_df, x, y)
-        # print(f"Line Length: {line} --> {total}")
         return total
-
-    @lru_cache(maxsize=8)
-    def get_round_trip_time(self, line:str)->float:
-        dist = self.get_total_line_distance(line)
-        dist = float(dist) if self.is_line_circular(line) else float(dist * 2)
-        # print(f"RTT: {line} --> {dist}")
-        return dist
     
 
 class ShortestPath(TrainBase):
@@ -294,15 +286,13 @@ class TrainCapacity(TrainBase):
             self.var_downstream_trains_per_hour[line] = self.solver.IntVar(\
                             0, self.solver.infinity(), f"n_trains_dn({line})")
 
-        self.var_trains_on_line_up = {}
-        self.var_trains_on_line_down = {}
-        for line in self.line_names:
-            self.var_trains_on_line_up[line] = self.solver.IntVar(\
-                0, self.solver.infinity(), f"uptrains-on-line({line})")
-            self.var_trains_on_line_down[line] = self.solver.IntVar(\
-                0, self.solver.infinity(), f"downtrains-on-line({line})")
-
         self.objective = self.solver.Objective()
+        for line in self.line_names:
+            self.objective.SetCoefficient(\
+                self.var_upstream_trains_per_hour[line], 1)
+            self.objective.SetCoefficient(\
+                self.var_downstream_trains_per_hour[line], 1)
+        self.objective.SetMinimization()
 
         # We will treat upstream and downstream capacity separately
         # This will give some added flexibility rather than just 
@@ -320,10 +310,6 @@ class TrainCapacity(TrainBase):
         for line in self.line_names:
             self.fill_line_capacity_per_train(line)
 
-        self.constrain_link_trains_per_hour_and_total_trains()
-
-        self.set_objective_coefficients()
-
         self.add_all_requirements()
 
         # Add a constraint that each leg has enough capacity
@@ -332,60 +318,6 @@ class TrainCapacity(TrainBase):
 
         self.constrain_upstream_downstream_same()
 
-    def constrain_link_trains_per_hour_and_total_trains(self):
-        for line in self.line_names:
-            rtt = self.get_round_trip_time(line) / 60.0
-            print(f"{line} rtt = {rtt}")
-
-            constrain = self.solver.Constraint(0, self.solver.infinity())
-            up_per_hour_var = self.var_upstream_trains_per_hour[line]
-            var_n_trains_up = self.var_trains_on_line_up[line]
-            constrain.SetCoefficient(var_n_trains_up, 1)
-            constrain.SetCoefficient(up_per_hour_var, -rtt)
-
-            constrain2 = self.solver.Constraint(0, self.solver.infinity())
-            down_per_hour_var = self.var_downstream_trains_per_hour[line]
-            var_n_trains_down = self.var_trains_on_line_down[line]
-            constrain2.SetCoefficient(var_n_trains_down, 1)
-            constrain2.SetCoefficient(down_per_hour_var, -rtt)
-
-            if not self.is_line_circular(line):
-                constrain3 = self.solver.Constraint(0, 0)
-                var = self.var_trains_on_line_up[line]
-                var2 = self.var_trains_on_line_down[line]
-                constrain3.SetCoefficient(var, 1)
-                constrain3.SetCoefficient(var2, -1)
-
-    # def set_objective(self):
-    #    for line in self.line_names:
-    #        self.objective.SetCoefficient(\
-    #            self.var_upstream_trains_per_hour[line], 1)
-    #        self.objective.SetCoefficient(\
-    #            self.var_downstream_trains_per_hour[line], 1)
-    #    self.objective.SetMinimization()
-
-    # def set_objective_coefficients(self):
-    #    for line in self.line_names:
-    #        rtt = self.get_round_trip_time(line) / 60.0
-    #        if self.is_line_circular(line):
-    #            var1 = self.var_upstream_trains_per_hour[line]
-    #            var2 = self.var_downstream_trains_per_hour[line]
-    #            self.objective.SetCoefficient(var1, rtt)
-    #            self.objective.SetCoefficient(var2, rtt)
-    #            pass
-    #        else:
-    #            var = self.var_upstream_trains_per_hour[line]
-    #            self.objective.SetCoefficient(var, rtt)
-    #    self.objective.SetMinimization()
-
-    def set_objective_coefficients(self):
-        for line in self.line_names:
-            var = self.var_trains_on_line_up[line]
-            self.objective.SetCoefficient(var, 1)
-            if self.is_line_circular(line):
-                var = self.var_trains_on_line_down[line]
-                self.objective.SetCoefficient(var, 1)
-        self.objective.SetMinimization()
 
 
     def initialize_capacity_matrix(self):

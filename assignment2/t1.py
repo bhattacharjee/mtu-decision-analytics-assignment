@@ -270,6 +270,10 @@ class Task1():
 
     # Sheet 6
     def accumulate_production_cost(self):
+        # var_fcp_a is an accumulator of production cost, shipping cost,
+        # material cost, etc.
+        # In this function, add the production cost for each
+        # factory, customer, product
         for factory in self.factory_names:
             for product in self.product_names:
                 cost_per_unit = get_element(\
@@ -281,6 +285,9 @@ class Task1():
 
     # Sheet 8
     def accumulate_shipping_cost(self):
+        # var_fcp_a is an accumulator of production cost and shipping cost
+        # In this function, add the shipping cost for each
+        # factory, customer, product
         for factory in self.factory_names:
             for customer in self.customer_names:
                 shipping_cost_per_unit = get_element(\
@@ -294,6 +301,10 @@ class Task1():
 
     # Sheet 2: Raw Materials Cost
     def accumulate_raw_materials_cost(self):
+        # var_sfm_a is an accumulator for raw materials cost, and raw materials
+        # shipping cost.
+        # In this function accumulate the raw materials cost for each
+        # supplier, material and factory
         for supplier in self.supplier_names:
             for material in self.material_names:
                 material_cost = get_element(\
@@ -306,6 +317,10 @@ class Task1():
 
     # Sheet 3: Raw Metrials Shipping
     def accumulate_raw_materials_shipping_cost(self):
+        # var_sfm_a is an accumulator for raw materials cost, and raw materials
+        # shipping cost.
+        # In this function accumulate the raw materials shipping cost for each
+        # supplier, material and factory
         for supplier in self.supplier_names:
             for factory in self.factory_names:
                 shipping_cost = get_element(\
@@ -316,6 +331,14 @@ class Task1():
                     self.var_sfm_a[supplier][factory][material] += shipping_cost
 
     def set_objective_coefficients(self):
+        # Total cost is a sum of
+        # 1. production cost
+        # 2. shipping cost
+        # 3. raw materials cost
+        # 4. Raw materials shipping cost
+
+        # This loop adds up production cost and shipping cost
+        # The two have already been added up and stored in var_fcp_a
         for prod in self.product_names:
             for fact in self.factory_names:
                 for cust in self.customer_names:
@@ -323,6 +346,8 @@ class Task1():
                     val = self.var_fcp_a[fact][cust][prod]
                     self.cost_objective.SetCoefficient(var, val)
 
+        # This loop adds up raw materials cost and raw materials shipping cost
+        # The two have already been added up and stored in var_sfm_a
         for fact in self.factory_names:
             for supp in self.supplier_names:
                 for mat in self.material_names:

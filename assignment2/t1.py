@@ -187,15 +187,20 @@ class Task1():
 
     # Sheet 1
     def create_supplier_stock_constraints(self):
-        """ Create constraints for stocks each supplier has """
+        # Create constraints for stocks each supplier has
+        # (fixed values as per excel)
         
         def set_supplier_zero(supplier:str, material:str):
+            # If a supplier doesn't have a material as per the excel
+            # force it to be zero
             for factory in self.factory_names:
                 var = self.var_sfm[supplier][factory][material]
                 constraint = self.solver.Constraint(0, 0)
                 constraint.SetCoefficient(var, 1.0)
 
         def set_supplier_capacity(supplier:str, material:str, capacity:int):
+            # if a supplier has a x amount of a material as per the excel
+            # force it to be that value
             constraint = self.solver.Constraint(0, capacity)
             for factory in self.factory_names:
                 var = self.var_sfm[supplier][factory][material]
@@ -212,7 +217,9 @@ class Task1():
 
     # Sheet 5
     def create_production_capacity_constraints(self):
-        """ Create constraints for each product and  """
+        # Create constraints for production capacity for each factory
+        # (as per excel sheet, fixed values)
+
         def set_zero(factory:str, product:str):
             for customer in self.customer_names:
                 var = self.var_fcp[factory][customer][product]
@@ -237,7 +244,9 @@ class Task1():
 
     # Sheet 7
     def create_constraint_meet_customer_demands(self):
-        """Ensure all customer demands are met"""
+        # Get the demand for each customer from the excel sheet
+        # Then loop over each factory, and ensure that the total
+        # from all factories to that customer meets the demand
 
         def set_zero(customer:str, product:str):
             for factory in self.factory_names:

@@ -105,6 +105,8 @@ class ShortestPath(TrainBase):
     def __init__(self, excel_file_name, source, destination):
         super().__init__(excel_file_name)
 
+        self.solver_invoked = False
+
         self.source = source
         self.destination = destination
 
@@ -264,16 +266,23 @@ class ShortestPath(TrainBase):
             ret.append(next_node)
 
         return ret
+
+    def solve(self):
+        if not self.solver_invoked:
+            self.solver.Solve()
+        self.solver_invoked = True
             
     def get_shortest_path(self):
         # Returns distance, [nodestart, node1, node2, ..., nodeend]
-        self.solver.Solve()
+        self.solve()
         return self.objective.Value(), \
             self.get_path(self.source, self.destination)
 
 class TrainCapacity(TrainBase):
     def __init__(self, excel_file_name):
         super().__init__(excel_file_name)
+
+        self.solver_invoked = False
 
         # This is a 2D array which specifies how many people travel
         # between every pair of directly connected stations
@@ -285,7 +294,7 @@ class TrainCapacity(TrainBase):
                         pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING)
 
 
-        # Variable: Number of trains for each line, upstream and downstream
+        # Variable: frequency of trains required on each line (per hour)
         self.var_upstream_trains_per_hour = {}
         self.var_downstream_trains_per_hour = {}
         for line in self.line_names:
@@ -294,6 +303,16 @@ class TrainCapacity(TrainBase):
             self.var_downstream_trains_per_hour[line] = self.solver.IntVar(\
                             0, self.solver.infinity(), f"n_trains_dn({line})")
 
+        # Variables, number of trains required on each line
+        # For non-circular lines, upstream and downstream trains have
+        # the same number as the same trains run back and forth
+        # This is specified in the last condition in 
+        # constrain_link_trains_per_hour_and_total_trains
+        #
+        # These variables are simply the following equation:
+        #
+        # n_trains >= frequency * round_trip_time
+        #
         self.var_trains_on_line_up = {}
         self.var_trains_on_line_down = {}
         for line in self.line_names:
@@ -307,11 +326,18 @@ class TrainCapacity(TrainBase):
         # We will treat upstream and downstream capacity separately
         # This will give some added flexibility rather than just 
         # assuming that trains upstream and downstream are the same
+        #
+        # This also helps in keeping the code common
+        #
+        # For non-circular lines, these values for upstream and downstream
+        # will be the same. We will force them by our variables and constraints
+        # rather than changing the numbers here
+        #
+        # Note: these are not variables
         self.line_capacity_per_train_up = {}
         for line in self.line_names:
             self.line_capacity_per_train_up[line] = \
                 self.initialize_capacity_matrix()
-
         self.line_capacity_per_train_down = {}
         for line in self.line_names:
             self.line_capacity_per_train_down[line] = \
@@ -330,25 +356,31 @@ class TrainCapacity(TrainBase):
         # to handle its traffic
         self.add_constraints_no_leg_overloads()
 
-        self.constrain_upstream_downstream_same()
 
     def constrain_link_trains_per_hour_and_total_trains(self):
         for line in self.line_names:
             rtt = self.get_round_trip_time(line) / 60.0
-            # print(f"{line} rtt = {rtt}")
 
+            # var_upstream_trains_per_hour is the frequency of trains required
+            # Therefore:
+            # Number of trains required >= frequency * round_trip_time
             constrain = self.solver.Constraint(0, self.solver.infinity())
             up_per_hour_var = self.var_upstream_trains_per_hour[line]
             var_n_trains_up = self.var_trains_on_line_up[line]
             constrain.SetCoefficient(var_n_trains_up, 1)
             constrain.SetCoefficient(up_per_hour_var, -rtt)
 
+            # var_downstream_trains_per_hour is the frequency of trains required
+            # Therefore:
+            # Number of trains required >= frequency * round_trip_time
             constrain2 = self.solver.Constraint(0, self.solver.infinity())
             down_per_hour_var = self.var_downstream_trains_per_hour[line]
             var_n_trains_down = self.var_trains_on_line_down[line]
             constrain2.SetCoefficient(var_n_trains_down, 1)
             constrain2.SetCoefficient(down_per_hour_var, -rtt)
 
+            # For non-circular routes, the same train travels back and forth
+            # hence the same number of trains upstream and downstream
             if not self.is_line_circular(line):
                 constrain3 = self.solver.Constraint(0, 0)
                 var = self.var_trains_on_line_up[line]
@@ -356,32 +388,14 @@ class TrainCapacity(TrainBase):
                 constrain3.SetCoefficient(var, 1)
                 constrain3.SetCoefficient(var2, -1)
 
-    # def set_objective(self):
-    #    for line in self.line_names:
-    #        self.objective.SetCoefficient(\
-    #            self.var_upstream_trains_per_hour[line], 1)
-    #        self.objective.SetCoefficient(\
-    #            self.var_downstream_trains_per_hour[line], 1)
-    #    self.objective.SetMinimization()
-
-    # def set_objective_coefficients(self):
-    #    for line in self.line_names:
-    #        rtt = self.get_round_trip_time(line) / 60.0
-    #        if self.is_line_circular(line):
-    #            var1 = self.var_upstream_trains_per_hour[line]
-    #            var2 = self.var_downstream_trains_per_hour[line]
-    #            self.objective.SetCoefficient(var1, rtt)
-    #            self.objective.SetCoefficient(var2, rtt)
-    #            pass
-    #        else:
-    #            var = self.var_upstream_trains_per_hour[line]
-    #            self.objective.SetCoefficient(var, rtt)
-    #    self.objective.SetMinimization()
-
     def set_objective_coefficients(self):
         for line in self.line_names:
             var = self.var_trains_on_line_up[line]
             self.objective.SetCoefficient(var, 1)
+
+            # Only add upstream and downstream to the objective for non-circular
+            # routes. For circular routes, the same train runs upstream
+            # and downstream, so we need to add only one
             if self.is_line_circular(line):
                 var = self.var_trains_on_line_down[line]
                 self.objective.SetCoefficient(var, 1)
@@ -406,10 +420,6 @@ class TrainCapacity(TrainBase):
         route = pair_array(route)
         for x, y in route:
             self.capacity_required[x][y] += req
-            #if (x == 'A' and y == 'B') or (x =='B' and y =='A'):
-            #    print(source, destination, ":", x, y, req,\
-            #        self.capacity_required[x][y])
-
 
     def add_all_requirements(self):
         # Add the requirements for each pair of adjacent stations
@@ -417,12 +427,6 @@ class TrainCapacity(TrainBase):
         pairs = [(s1, s2,) for s1 in self.stop_names for s2 in self.stop_names]
         for s1, s2 in tqdm(pairs, desc=description):
             self.add_requirements(s1, s2)
-
-    # def fill_line_capacity_per_train(self, line:str):
-    #    capacity = get_element(self.train_capacity_df, line, 'Capacity')
-    #    for x, y in self.station_pairs(line):
-    #        self.line_capacity_per_train_up[line][x][y] = capacity
-    #    for x, y in self.station_pairs(line, downstream=True):
 
     def fill_line_capacity_per_train(self, line:str):
         capacity = get_element(self.train_capacity_df, line, 'Capacity')
@@ -467,32 +471,13 @@ class TrainCapacity(TrainBase):
                 constrain(s1, s2)
 
     def solve(self):
-        self.solver.Solve()
-
-    def constrain_upstream_downstream_same(self):
-        # For non-circular routes, upstream requirement is the same as
-        # downstream requirement since the same trains shuttle back and forth
-        print()
-        print("****")
-        print("For non-circular lines, forcing same number of upstream and "\
-            + " downstream trains")
-        for line in self.line_names:
-            if not self.is_line_circular(line):
-                cons = self.solver.Constraint(0, 0)
-                down = self.var_downstream_trains_per_hour[line]
-                up = self.var_upstream_trains_per_hour[line]
-                cons.SetCoefficient(up, 1)
-                cons.SetCoefficient(down, -1)
-
-    def print_capacity_required(self):
-        def get_series(stop):
-            out = {s: self.capacity_required[stop][s] for s in self.stop_names}
-            return pd.Series(out)
-
-        dfdict = {s: get_series(s) for s in self.stop_names}
-        print(pd.DataFrame(dfdict).T)
+        if not self.solver_invoked:
+            self.solver.Solve()
+        self.solver_invoked = True
 
     def print_solution(self):
+        self.solve()
+
         print(f"Total number of trains required: {self.objective.Value()}")
         for line in self.line_names:
             if self.is_line_circular(line):
@@ -503,9 +488,6 @@ class TrainCapacity(TrainBase):
                 uptrains = self.var_trains_on_line_up[line].SolutionValue()
                 downtrains = self.var_trains_on_line_down[line].SolutionValue()
                 print(f"{line}:    UP: {uptrains}    DOWN: {downtrains}")
-
-
-            
 
     def main(self):
         self.solve()

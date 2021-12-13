@@ -296,7 +296,19 @@ class TrainCapacity(TrainBase):
 
         self.shortest_path_samples = list()
 
-        # Variable: frequency of trains required on each line (per hour)
+        # We will treat upstream and downstream capacity separately
+        # This will give some added flexibility rather than just 
+        # assuming that trains upstream and downstream are the same
+        #
+        # This also helps in keeping the code common
+        #
+        # For non-circular lines, these values for upstream and downstream
+        # will be the same. We will force them by our variables and constraints
+        # rather than changing the numbers here
+        #
+        # --------------------------------------------------------------------
+        # VARIABLE: frequency of trains required on each line (per hour)
+        # --------------------------------------------------------------------
         self.var_upstream_trains_per_hour = {}
         self.var_downstream_trains_per_hour = {}
         for line in self.line_names:
@@ -305,6 +317,16 @@ class TrainCapacity(TrainBase):
             self.var_downstream_trains_per_hour[line] = self.solver.IntVar(\
                             0, self.solver.infinity(), f"n_trains_dn({line})")
 
+        # We will treat upstream and downstream capacity separately
+        # This will give some added flexibility rather than just 
+        # assuming that trains upstream and downstream are the same
+        #
+        # This also helps in keeping the code common
+        #
+        # For non-circular lines, these values for upstream and downstream
+        # will be the same. We will force them by our variables and constraints
+        # rather than changing the numbers here
+        #
         # Variables, number of trains required on each line
         # For non-circular lines, upstream and downstream trains have
         # the same number as the same trains run back and forth
@@ -315,6 +337,9 @@ class TrainCapacity(TrainBase):
         #
         # n_trains >= frequency * round_trip_time
         #
+        # --------------------------------------------------------------------
+        # VARIABLE: Total number of trains on a line 
+        # --------------------------------------------------------------------
         self.var_trains_on_line_up = {}
         self.var_trains_on_line_down = {}
         for line in self.line_names:
@@ -334,6 +359,12 @@ class TrainCapacity(TrainBase):
         # For non-circular lines, these values for upstream and downstream
         # will be the same. We will force them by our variables and constraints
         # rather than changing the numbers here
+        #
+        # This matrix denotes the capacity for each line, that is
+        # how many passengers can a single train carry from A to B in line L
+        # where A and B are adjacent stations in line L
+        #
+        # For non-circular lines, one of upstream or downstream from A to B
         #
         # Note: these are not variables
         self.line_capacity_per_train_up = {}
@@ -411,6 +442,7 @@ class TrainCapacity(TrainBase):
         return outer
 
     def save_shortest_path(self, source, destination, dist, route):
+        # Save a sample of the shortest paths calculated for printing
         if random.random() <= 0.9:
             return
         t = (source, destination, dist, route,)
@@ -425,6 +457,8 @@ class TrainCapacity(TrainBase):
         # For a source and destination, find the number of passengers
         # traveling. Calculate the shortest path, and add the same
         # number of passengers to each leg of the route
+        # Basically finds the shortest path, and then adds the traffic between
+        # the source and destination to each leg of the path
         if source == destination:
             return
         req = int(get_element(self.passenger_df, source, destination))
@@ -437,12 +471,20 @@ class TrainCapacity(TrainBase):
 
     def add_all_requirements(self):
         # Add the requirements for each pair of adjacent stations
+        # Basically finds the shortest path, and then adds the traffic between
+        # the source and destination to each leg of the path
         description = "Finding shortest paths"
         pairs = [(s1, s2,) for s1 in self.stop_names for s2 in self.stop_names]
         for s1, s2 in tqdm(pairs, desc=description):
             self.add_requirements(s1, s2)
 
     def fill_line_capacity_per_train(self, line:str):
+        # This matrix denotes the capacity for each line, that is
+        # how many passengers can a single train carry from A to B in line L
+        # where A and B are adjacent stations in line L
+        #
+        # For non-circular lines, one of upstream or downstream from A to B
+        # will be 0
         capacity = get_element(self.train_capacity_df, line, 'Capacity')
         if self.is_line_circular(line):
             for x, y in self.station_pairs(line):
@@ -460,25 +502,27 @@ class TrainCapacity(TrainBase):
                 self.line_capacity_per_train_down[line][x][y] = capacity
 
     def add_constraints_no_leg_overloads(self):
+        # Ensures that between each pair of connected stations,
+        # there are enough trains to carry people to meet the demand
+        #
+        # The demand has already been accumulated
+        # if A -> B -> C, and we are considering B -> C,
+        # both B -> C and A -> C have already been added
+        #
+        # Also A -> A = 0, we could have added an if condition to remove this
+        # constraint, but its just easier to let it be
         def constrain(source, dest):
+            # Requirement(A to B) <= sum_over_lines(line capacity from A to B)
             req = self.capacity_required[source][dest]
             cons = self.solver.Constraint(int(req), self.solver.infinity())
-            # debugstr = f"constrain({source},{dest})  : {req} <= 0 "
-            # acc = 0.0
             for line in self.line_names:
                 capacity = self.line_capacity_per_train_up[line][source][dest]
                 var = self.var_upstream_trains_per_hour[line]
                 cons.SetCoefficient(var, int(capacity))
-                # debugstr = debugstr + f"+ ({capacity} * {var})"
-                # acc += capacity
+
                 capacity = self.line_capacity_per_train_down[line][source][dest]
                 var = self.var_downstream_trains_per_hour[line]
                 cons.SetCoefficient(var, int(capacity))
-                # debugstr = debugstr + f"+ ({capacity} * {var})"
-                # acc += capacity
-            # debugstr = debugstr + f") <= infinity"
-            # if req > 0 and acc == 0.0:
-            #    print(debugstr)
 
         for s1 in self.stop_names:
             for s2 in self.stop_names:

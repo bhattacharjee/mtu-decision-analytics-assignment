@@ -66,6 +66,7 @@ class TrainBase:
 
     @lru_cache(maxsize=128)
     def is_line_circular(self, line):
+        # if line is circular return True, else False
         route = self.get_line_stations(line)
         first, last = route[0], route[-1]
         d1 = get_element(self.distance_df, first, last)
@@ -86,6 +87,9 @@ class TrainBase:
 
     @lru_cache(maxsize=128)
     def get_total_line_distance(self, line:str)->list:
+        # Get the total distance between the first and the last station
+        # of any line. For circular lines, this is the round trip time
+        # to the same station
         stations = self.get_line_stations(line)
         stations = pair_array(stations, self.is_line_circular(line))
         total = 0
@@ -96,6 +100,7 @@ class TrainBase:
 
     @lru_cache(maxsize=8)
     def get_round_trip_time(self, line:str)->float:
+        # For any line, return the round-trip time for the train
         dist = self.get_total_line_distance(line)
         dist = float(dist) if self.is_line_circular(line) else float(dist * 2)
         # print(f"RTT: {line} --> {dist}")
@@ -132,11 +137,11 @@ class ShortestPath(TrainBase):
 
 
     def create_edges(self):
-        """ Decision variables if an edge from x to y is taken
-            Two additional housekeeping things are done using constraints here:
-            - An edge from a node to itself is always zero
-            - If an edge between two nodes doesn't exist, it is always zero
-        """
+        # Decision variables if an edge from x to y is taken
+        #    Two additional housekeeping things are done using constraints here:
+        #    - An edge from a node to itself is always zero
+        #    - If an edge between two nodes doesn't exist, it is always zero
+        #
         outer = {}
         for st1 in self.stop_names:
             inner = {}

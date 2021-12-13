@@ -7,6 +7,8 @@ import pandas as pd
 from ortools.linear_solver import pywraplp
 from functools import lru_cache
 import math
+import numpy as np
+
 try:
     from tqdm import tqdm
 except:
@@ -330,12 +332,16 @@ class TrainCapacity(TrainBase):
         # number of passengers to each leg of the route
         if source == destination:
             return
-        req = get_element(self.passenger_df, source, destination)
+        req = int(get_element(self.passenger_df, source, destination))
         dist, route = ShortestPath(self.excel_file_name, source, destination)\
                         .get_shortest_path()
         route = pair_array(route)
         for x, y in route:
             self.capacity_required[x][y] += req
+            #if (x == 'A' and y == 'B') or (x =='B' and y =='A'):
+            #    print(source, destination, ":", x, y, req,\
+            #        self.capacity_required[x][y])
+
 
     def add_all_requirements(self):
         # Add the requirements for each pair of adjacent stations
@@ -344,12 +350,28 @@ class TrainCapacity(TrainBase):
         for s1, s2 in tqdm(pairs, desc=description):
             self.add_requirements(s1, s2)
 
+    # def fill_line_capacity_per_train(self, line:str):
+    #    capacity = get_element(self.train_capacity_df, line, 'Capacity')
+    #    for x, y in self.station_pairs(line):
+    #        self.line_capacity_per_train_up[line][x][y] = capacity
+    #    for x, y in self.station_pairs(line, downstream=True):
+
     def fill_line_capacity_per_train(self, line:str):
         capacity = get_element(self.train_capacity_df, line, 'Capacity')
-        for x, y in self.station_pairs(line):
-            self.line_capacity_per_train_up[line][x][y] = capacity
-        for x, y in self.station_pairs(line, downstream=True):
-            self.line_capacity_per_train_down[line][x][y] = capacity
+        if self.is_line_circular(line):
+            for x, y in self.station_pairs(line):
+                self.line_capacity_per_train_up[line][x][y] = capacity
+            for x, y in self.station_pairs(line, downstream=True):
+                self.line_capacity_per_train_down[line][x][y] = capacity
+        else:
+            upstream_stations = self.get_line_stations(line)
+            upstream_stations = pair_array(upstream_stations)
+            downstream_stations = self.get_line_stations(line)[::-1]
+            downstream_stations = pair_array(downstream_stations)
+            for x, y in upstream_stations:
+                self.line_capacity_per_train_up[line][x][y] = capacity
+            for x, y in downstream_stations:
+                self.line_capacity_per_train_down[line][x][y] = capacity
 
     def add_constraints_no_leg_overloads(self):
         def constrain(source, dest):
@@ -394,7 +416,16 @@ class TrainCapacity(TrainBase):
                 cons.SetCoefficient(up, 1)
                 cons.SetCoefficient(down, -1)
 
+    def print_capacity_required(self):
+        def get_series(stop):
+            out = {s: self.capacity_required[stop][s] for s in self.stop_names}
+            return pd.Series(out)
+
+        dfdict = {s: get_series(s) for s in self.stop_names}
+        print(pd.DataFrame(dfdict).T)
+
     def print_solution(self):
+        #self.print_capacity_required()
         print()
         print('-' * 80)
         print()

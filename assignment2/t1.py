@@ -74,7 +74,7 @@ class Task1():
         # must be accumulated before assigning to the variables
         # We use another 3D matrix of floats to accumulate the coefficients
         # before assigning them
-        self.var_fcp_a = self.create_factory_customer_product_coefficients()
+        self.coeff_fcp = self.create_factory_customer_product_coefficients()
 
         # 3D matrix. How many units of material m is supplied by supplier s to
         # factory f
@@ -85,7 +85,7 @@ class Task1():
         # must be accumulated before assigning to the variables
         # We use another 3D matrix of floats to accumulate the coefficients
         # before assigning them
-        self.var_sfm_a = self.create_supplier_factory_material_coefficients()
+        self.coeff_sfm = self.create_supplier_factory_material_coefficients()
 
         # Sheet 1: Supplier Stock
         self.create_supplier_stock_constraints()
@@ -270,7 +270,7 @@ class Task1():
 
     # Sheet 6
     def accumulate_production_cost(self):
-        # var_fcp_a is an accumulator of production cost, shipping cost,
+        # coeff_fcp is an accumulator of production cost, shipping cost,
         # material cost, etc.
         # In this function, add the production cost for each
         # factory, customer, product
@@ -281,11 +281,11 @@ class Task1():
                 cost_per_unit = float(cost_per_unit)
                 if cost_per_unit == float('inf'): cost_per_unit = 0.0
                 for customer in self.customer_names:
-                    self.var_fcp_a[factory][customer][product] += cost_per_unit
+                    self.coeff_fcp[factory][customer][product] += cost_per_unit
 
     # Sheet 8
     def accumulate_shipping_cost(self):
-        # var_fcp_a is an accumulator of production cost and shipping cost
+        # coeff_fcp is an accumulator of production cost and shipping cost
         # In this function, add the shipping cost for each
         # factory, customer, product
         for factory in self.factory_names:
@@ -296,12 +296,12 @@ class Task1():
                 if shipping_cost_per_unit == float('inf'):
                     shipping_cost_per_unit = 0.0
                 for product in self.product_names:
-                    self.var_fcp_a[factory][customer][product] += \
+                    self.coeff_fcp[factory][customer][product] += \
                         shipping_cost_per_unit
 
     # Sheet 2: Raw Materials Cost
     def accumulate_raw_materials_cost(self):
-        # var_sfm_a is an accumulator for raw materials cost, and raw materials
+        # coeff_sfm is an accumulator for raw materials cost, and raw materials
         # shipping cost.
         # In this function accumulate the raw materials cost for each
         # supplier, material and factory
@@ -312,12 +312,12 @@ class Task1():
                 material_cost = float(material_cost)
                 if material_cost == float('inf'): material_cost = 0.0
                 for factory in self.factory_names:
-                    self.var_sfm_a[supplier][factory][material] += \
+                    self.coeff_sfm[supplier][factory][material] += \
                         material_cost
 
     # Sheet 3: Raw Metrials Shipping
     def accumulate_raw_materials_shipping_cost(self):
-        # var_sfm_a is an accumulator for raw materials cost, and raw materials
+        # coeff_sfm is an accumulator for raw materials cost, and raw materials
         # shipping cost.
         # In this function accumulate the raw materials shipping cost for each
         # supplier, material and factory
@@ -328,7 +328,7 @@ class Task1():
                 shipping_cost = float(shipping_cost)
                 if shipping_cost == float('inf'): shipping_cost = 0.0
                 for material in self.material_names:
-                    self.var_sfm_a[supplier][factory][material] += shipping_cost
+                    self.coeff_sfm[supplier][factory][material] += shipping_cost
 
     def set_objective_coefficients(self):
         # Total cost is a sum of
@@ -338,21 +338,21 @@ class Task1():
         # 4. Raw materials shipping cost
 
         # This loop adds up production cost and shipping cost
-        # The two have already been added up and stored in var_fcp_a
+        # The two have already been added up and stored in coeff_fcp
         for prod in self.product_names:
             for fact in self.factory_names:
                 for cust in self.customer_names:
                     var = self.var_fcp[fact][cust][prod]
-                    val = self.var_fcp_a[fact][cust][prod]
+                    val = self.coeff_fcp[fact][cust][prod]
                     self.cost_objective.SetCoefficient(var, val)
 
         # This loop adds up raw materials cost and raw materials shipping cost
-        # The two have already been added up and stored in var_sfm_a
+        # The two have already been added up and stored in coeff_sfm
         for fact in self.factory_names:
             for supp in self.supplier_names:
                 for mat in self.material_names:
                     var = self.var_sfm[supp][fact][mat]
-                    val = self.var_sfm_a[supp][fact][mat]
+                    val = self.coeff_sfm[supp][fact][mat]
                     self.cost_objective.SetCoefficient(var, val)
     # Sheet 4
     # For each factory and material

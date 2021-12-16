@@ -85,6 +85,9 @@ class Task2:
             outer[c1] = inner
         return outer
 
+    # We use additional variables, each having values from 1 to N
+    # if city[k] is the i'th city to be visited, then city[k] = i
+    # This will help us to avoid loops
     def create_order_variables(self):
         return [self.solver.IntVar(1, len(self.city_names), f"{n}-{c}") \
             for n, c in enumerate(self.city_names)]

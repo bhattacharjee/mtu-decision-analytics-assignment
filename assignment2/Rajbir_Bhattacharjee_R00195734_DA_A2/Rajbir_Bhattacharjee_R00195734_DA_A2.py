@@ -1562,27 +1562,60 @@ class TrainCapacity(TrainBase):
 import argparse
 import sys
 
-from t1 import *
-from t2 import *
-from t3 import *
-
 def main():
-    parser = argparse.ArgumentParser("Assignment 2: Decision Analytics")
+    description = """
+    Assignment 2: Decision Analytics
+
+    Examples:
+    ./Rajbir_Bhattacharjee_R00195734_DA_A2.py -t 1
+    ./Rajbir_Bhattacharjee_R00195734_DA_A2.py -t3 -f ../Assignment_DA_2_Task_3_data.xls
+
+    Note: if filename is not specified, then it looks for the
+    excel files in the same directory.
+    """
+
+    t_help_string = """Number of the task, one of 1, two or 3."""
+
+    f_help_string = """File name for the excel sheet.
+    The full file name must be specified including path.
+    If the filename is not specified, then it looks for
+    hard-coded filenames in the current directory."""
+
+    parser = argparse.ArgumentParser(description)
     parser.add_argument(\
                 "-t",
                 "--task",
                 type=int,
-                choices=[1, 2, 3])
+                choices=[1, 2, 3],
+                help=t_help_string)
+    parser.add_argument(\
+                "-f",
+                "--file",
+                type=str,
+                help=f_help_string)
+
     args = parser.parse_args()
 
+    filename = args.file
+
     if args.task == 1:
-        Task1("./Assignment_DA_2_Task_1_data.xlsx").main()
+        filename = filename if filename != None \
+            else "./Assignment_DA_2_Task_1_data.xlsx"
+        Task1(filename).main()
     elif args.task == 2:
-        Task2("./Assignment_DA_2_Task_2_data.xlsx", "Cork").main()
+        filename = filename if filename != None \
+            else "./Assignment_DA_2_Task_2_data.xlsx"
+        Task2(filename, "Cork").main()
     elif args.task == 3:
-        TrainCapacity('Assignment_DA_2_Task_3_data.xlsx').main()
+        filename = filename if filename != None \
+            else "Assignment_DA_2_Task_3_data.xlsx"
+        TrainCapacity(filename).main()
     else:
-        print(f"{args.task} is not a valid value for task")
+        if not args.task is None:
+            print()
+            print(f"{args.task} is not a valid value for task")
+        print()
+        parser.print_help()
 
 if "__main__" == __name__:
     main()

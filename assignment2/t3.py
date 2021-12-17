@@ -105,6 +105,18 @@ class TrainBase:
         dist = float(dist) if self.is_line_circular(line) else float(dist * 2)
         # print(f"RTT: {line} --> {dist}")
         return dist
+
+    @lru_cache(maxsize=512)
+    def get_line_for_leg(self, stop1:str, stop2:str)->list:
+        line_arr = []
+        for line in self.line_names:
+            stations = self.get_line_stations(line)
+            legs = pair_array(stations, self.is_line_circular(line))
+            for x, y in legs:
+                if (x == stop1 and y == stop2) or (x == stop2 and y == stop1):
+                    line_arr.append(line)
+        return line_arr
+
     
 
 class ShortestPath(TrainBase):
@@ -281,8 +293,11 @@ class ShortestPath(TrainBase):
     def get_shortest_path(self):
         # Returns distance, [nodestart, node1, node2, ..., nodeend]
         self.solve()
-        return self.objective.Value(), \
-            self.get_path(self.source, self.destination)
+        shortest_path = self.get_path(self.source, self.destination)
+        stations_in_leg = {}
+        for x, y in pair_array(shortest_path):
+            stations_in_leg[(x,y,)] = self.get_line_for_leg(x, y)
+        return self.objective.Value(), shortest_path, stations_in_leg
 
 class TrainCapacity(TrainBase):
     def __init__(self, excel_file_name):
@@ -446,17 +461,20 @@ class TrainCapacity(TrainBase):
             outer[s1] = {s: 0 for s in self.stop_names}
         return outer
 
-    def save_shortest_path(self, source, destination, dist, route):
+    def save_shortest_path(self, source, destination, dist, route, lines_in_leg):
         # Save a sample of the shortest paths calculated for printing
         if random.random() <= 0.9:
             return
-        t = (source, destination, dist, route,)
+        t = (source, destination, dist, route, lines_in_leg,)
         self.shortest_path_samples.append(t)
 
     def print_shortest_paths(self):
-        for source, destination, dist, route in self.shortest_path_samples:
+        for source, destination, dist, route, lines_in_leg \
+            in self.shortest_path_samples:
             print(f"DISTANCE({source} --> {destination}) = {int(dist):>3d}" +\
                     f"           {route}")
+            print(f"                                  {lines_in_leg}")
+            print()
 
     def add_requirements(self, source, destination):
         # For a source and destination, find the number of passengers
@@ -467,9 +485,10 @@ class TrainCapacity(TrainBase):
         if source == destination:
             return
         req = int(get_element(self.passenger_df, source, destination))
-        dist, route = ShortestPath(self.excel_file_name, source, destination)\
-                        .get_shortest_path()
-        self.save_shortest_path(source, destination, dist, route)
+        dist, route, lines_in_leg = \
+            ShortestPath(self.excel_file_name, source, destination)\
+                .get_shortest_path()
+        self.save_shortest_path(source, destination, dist, route, lines_in_leg)
         route = pair_array(route)
         for x, y in route:
             self.capacity_required[x][y] += req

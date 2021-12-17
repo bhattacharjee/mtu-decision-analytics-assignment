@@ -108,6 +108,8 @@ class TrainBase:
 
     @lru_cache(maxsize=512)
     def get_line_for_leg(self, stop1:str, stop2:str)->list:
+        # Given two adjacent stations, it returns the list of the lines
+        # lines connecting the stations
         line_arr = []
         for line in self.line_names:
             stations = self.get_line_stations(line)
